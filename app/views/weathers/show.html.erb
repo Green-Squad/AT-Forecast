@@ -1,0 +1,34 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <strong>Date:</strong>
+  <%= @weather.date %>
+</p>
+
+<p>
+  <strong>High:</strong>
+  <%= @weather.high %>
+</p>
+
+<p>
+  <strong>Low:</strong>
+  <%= @weather.low %>
+</p>
+
+<p>
+  <strong>Description:</strong>
+  <%= @weather.description %>
+</p>
+
+<p>
+  <strong>Precip chance:</strong>
+  <%= @weather.precip_chance %>
+</p>
+
+<p>
+  <strong>Shelter:</strong>
+  <%= @weather.shelter %>
+</p>
+
+<%= link_to 'Edit', edit_weather_path(@weather) %> |
+<%= link_to 'Back', weathers_path %>
