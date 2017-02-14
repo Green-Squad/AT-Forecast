@@ -10,7 +10,19 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170214213423) do
+ActiveRecord::Schema.define(version: 20170214215552) do
+
+  create_table "shelters", force: :cascade do |t|
+    t.string   "name"
+    t.decimal  "mileage"
+    t.integer  "elevation"
+    t.decimal  "long"
+    t.decimal  "latt"
+    t.integer  "state_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["state_id"], name: "index_shelters_on_state_id"
+  end
 
   create_table "states", force: :cascade do |t|
     t.string   "name"

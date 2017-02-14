@@ -1,0 +1,17 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  mileage: 9.99
+  elevation: 1
+  long: 9.99
+  latt: 9.99
+  state: one
+
+two:
+  name: MyString
+  mileage: 9.99
+  elevation: 1
+  long: 9.99
+  latt: 9.99
+  state: two

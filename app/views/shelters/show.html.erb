@@ -1,0 +1,35 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <strong>Name:</strong>
+  <%= @shelter.name %>
+</p>
+
+<p>
+  <strong>mileage:</strong>
+  <%= @shelter.mileage %>
+</p>
+
+<p>
+  <strong>Elevation:</strong>
+  <%= @shelter.elevation %>
+</p>
+
+<p>
+  <strong>Long:</strong>
+  <%= @shelter.long %>
+</p>
+
+<p>
+  <strong>Latt:</strong>
+  <%= @shelter.latt %>
+</p>
+
+<p>
+  <strong>State:</strong>
+  <%= @shelter.state.name %>
+  <%= @shelter.state.id %>
+</p>
+
+<%= link_to 'Edit', edit_shelter_path(@shelter) %> |
+<%= link_to 'Back', shelters_path %>
