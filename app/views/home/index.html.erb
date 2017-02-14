@@ -1,0 +1,14 @@
+<ul>
+<% @states.each do |state| %>
+  <li><a href="#<%= state.name %>"><%= state.name %></a></li>
+<% end %>
+</ul>
+
+<% @shelters_states.each do |state, shelters| %>
+  <h2 id="<%= state %>"><%= state %></h2>
+  <ul>
+  <% shelters.each do |shelter| %>
+      <li><a href="<%= shelter_path(shelter) %>"><%= shelter.name %></a></li>
+  <% end %>
+  </ul>
+<% end %>
