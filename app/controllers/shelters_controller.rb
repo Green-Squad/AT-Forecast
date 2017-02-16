@@ -10,6 +10,8 @@ class SheltersController < ApplicationController
   # GET /shelters/1
   # GET /shelters/1.json
   def show
+    @shelter.update_weather
+    @weather = Weather.where(shelter: @shelter)
   end
 
   # GET /shelters/new

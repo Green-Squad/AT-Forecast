@@ -28,8 +28,11 @@
 <p>
   <strong>State:</strong>
   <%= @shelter.state.name %>
-  <%= @shelter.state.id %>
 </p>
+
+<% @weather.each do |weather| %>
+  <p>Date: <%= weather.weather_date.strftime("%A %m/%d/%y") %>, Low: <%= weather.low %>, High: <%= weather.high %>, Description: <%= weather.description %>, Precip Chance: <%= weather.precip_chance %></p>
+<% end %>
 
 <%= link_to 'Edit', edit_shelter_path(@shelter) %> |
 <%= link_to 'Back', shelters_path %>
