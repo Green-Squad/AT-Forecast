@@ -3,7 +3,7 @@ class Shelter < ApplicationRecord
 
   def update_weather
 
-    Weather.delete_all
+    Weather.where(shelter: self).delete_all
 
     base_url = 'http://api.openweathermap.org/data/2.5/forecast/daily?'
     api_key = '&appid=d6c2dca5173b6aa1e1975757d2eac3e2'
@@ -17,7 +17,10 @@ class Shelter < ApplicationRecord
       high = weather['temp']['max']
       low = weather ['temp']['min']
       description = weather['weather'][0]['description']
-      logger.debug "Date: #{weather_date}"
+      wind_direction = weather['deg']
+      wind_speed = weather['speed']
+
+      description += " Wind: #{wind_speed} m/s at #{wind_direction} degrees"
       Weather.create(weather_date: weather_date, high: high, low: low,
         description: description, precip_chance:0, shelter:self)
 #      precip_chance =

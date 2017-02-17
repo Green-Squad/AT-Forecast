@@ -1,34 +1,21 @@
 <p id="notice"><%= notice %></p>
 
-<p>
-  <strong>Name:</strong>
-  <%= @shelter.name %>
-</p>
+  <h1><%= @shelter.name %></h1>
 
-<p>
-  <strong>mileage:</strong>
-  <%= @shelter.mileage %>
-</p>
+<div>
+  NOBO Mile <%= @shelter.mileage %>
+</div>
 
-<p>
-  <strong>Elevation:</strong>
-  <%= @shelter.elevation %>
-</p>
+<div>
+  <%= @shelter.elevation %> feet
+</div>
 
-<p>
-  <strong>Long:</strong>
+<div>  <%= @shelter.state.name %></div>
+<div>
+  <%= @shelter.latt %>,
   <%= @shelter.long %>
-</p>
+</div>
 
-<p>
-  <strong>Latt:</strong>
-  <%= @shelter.latt %>
-</p>
-
-<p>
-  <strong>State:</strong>
-  <%= @shelter.state.name %>
-</p>
 
 <% @weather.each do |weather| %>
   <p>Date: <%= weather.weather_date.strftime("%A %m/%d/%y") %>, Low: <%= weather.low %>, High: <%= weather.high %>, Description: <%= weather.description %>, Precip Chance: <%= weather.precip_chance %></p>
