@@ -1,4 +1,5 @@
 class Shelter < ApplicationRecord
+  has_many :weathers
   belongs_to :state
 
   def update_weather

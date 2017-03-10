@@ -1,6 +1,6 @@
 <ul>
-<% @states.each do |state| %>
-  <li><a href="#<%= state.name %>"><%= state.name %></a></li>
+<% @states.each do |state, average_weather| %>
+  <li><a href="#<%= state %>"><%= state %></a> High: <%= average_weather[:high] %>, Low: <%= average_weather[:low] %></li>
 <% end %>
 </ul>
 
