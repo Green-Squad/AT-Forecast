@@ -15,8 +15,10 @@ class SheltersController < ApplicationController
   end
 
   def hourly
+    date = params[:date].to_datetime
+    date = date.change(offset: "-0500")
     @shelter.update_hourly_weather
-    @hourly_weather = HourlyWeather.where(shelter: @shelter)
+    @hourly_weather = HourlyWeather.where(shelter: @shelter, date: date.beginning_of_day..date.end_of_day)
   end
 
   # GET /shelters/new

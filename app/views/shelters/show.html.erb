@@ -17,11 +17,35 @@
 </div>
 
 
-<% @weather.each do |weather| %>
+<% @weather.each_with_index do |weather,index| %>
   <p>Date: <%= weather.weather_date.strftime("%A %m/%d/%y") %>, Low: <%= weather.low %>, High: <%= weather.high %>, Description: <%= weather.description %>, Precip Chance: <%= weather.precip_chance %></p>
+  <% if (index < 5) %>
+  <button data-weatherdate="<%= weather.weather_date %>" class="more">More details</button>
+  <% end %>
 <% end %>
 
-<%= @hourly_weather.inspect %>
+<script type="text/javascript">
+dates = document.getElementsByClassName('more');
+for (var i = 0; i < dates.length; i++) {
+    dates[i].addEventListener("click", function() {
+      weatherdate = this.dataset.weatherdate
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', window.location.pathname + 'hourly/' + weatherdate + '.json');
+      xhr.send(null);
+      xhr.onreadystatechange = function () {
+        var DONE = 4; // readyState 4 means the request is done.
+        var OK = 200; // status 200 is a successful return.
+        if (xhr.readyState === DONE) {
+          if (xhr.status === OK) {
+            console.log(xhr.responseText); // 'This is the returned text.'
+          } else {
+            console.log('Error: ' + xhr.status); // An error occurred during the request.
+          }
+        }
 
-<%= link_to 'Edit', edit_shelter_path(@shelter) %> |
-<%= link_to 'Back', shelters_path %>
+      };
+
+    }, false);
+
+}
+</script>
