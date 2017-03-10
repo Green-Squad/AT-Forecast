@@ -10,7 +10,18 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170216221851) do
+ActiveRecord::Schema.define(version: 20170310193844) do
+
+  create_table "hourly_weathers", force: :cascade do |t|
+    t.datetime "date"
+    t.integer  "temp"
+    t.string   "description"
+    t.integer  "precip_chance"
+    t.integer  "shelter_id"
+    t.datetime "created_at",    null: false
+    t.datetime "updated_at",    null: false
+    t.index ["shelter_id"], name: "index_hourly_weathers_on_shelter_id"
+  end
 
   create_table "shelters", force: :cascade do |t|
     t.string   "name"

@@ -1,5 +1,5 @@
 class SheltersController < ApplicationController
-  before_action :set_shelter, only: [:show, :edit, :update, :destroy]
+  before_action :set_shelter, only: [:show, :edit, :update, :destroy, :hourly]
 
   # GET /shelters
   # GET /shelters.json
@@ -12,6 +12,11 @@ class SheltersController < ApplicationController
   def show
     @shelter.update_weather
     @weather = Weather.where(shelter: @shelter)
+  end
+
+  def hourly
+    @shelter.update_hourly_weather
+    @hourly_weather = HourlyWeather.where(shelter: @shelter)
   end
 
   # GET /shelters/new

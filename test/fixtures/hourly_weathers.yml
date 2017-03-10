@@ -1,0 +1,15 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  date: 2017-03-10 14:38:44
+  temp: 1
+  description: MyString
+  precip_chance: 1
+  shelter: one
+
+two:
+  date: 2017-03-10 14:38:44
+  temp: 1
+  description: MyString
+  precip_chance: 1
+  shelter: two
