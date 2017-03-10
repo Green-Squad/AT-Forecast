@@ -18,9 +18,12 @@
 
 
 <% @weather.each_with_index do |weather,index| %>
-  <p>Date: <%= weather.weather_date.strftime("%A %m/%d/%y") %>, Low: <%= weather.low %>, High: <%= weather.high %>, Description: <%= weather.description %>, Precip Chance: <%= weather.precip_chance %></p>
-  <% if (index < 5) %>
-  <button data-weatherdate="<%= weather.weather_date %>" class="more">More details</button>
+  <div>
+    <p>Date: <%= weather.weather_date.strftime("%A %m/%d/%y") %>, Low: <%= weather.low %>, High: <%= weather.high %>, Description: <%= weather.description %>, Precip Chance: <%= weather.precip_chance %></p>
+    <% if (index < 5) %>
+    <button data-weatherdate="<%= weather.weather_date %>" class="more">More details</button>
+    <div class="hourly-weather"></div>
+  </div>
   <% end %>
 <% end %>
 
@@ -28,7 +31,9 @@
 dates = document.getElementsByClassName('more');
 for (var i = 0; i < dates.length; i++) {
     dates[i].addEventListener("click", function() {
-      weatherdate = this.dataset.weatherdate
+      weatherdate = this.dataset.weatherdate;
+      weatherdateParent = this.parentElement;
+      hourlyWeatherDiv = weatherdateParent.getElementsByClassName('hourly-weather')[0];
       var xhr = new XMLHttpRequest();
       xhr.open('GET', window.location.pathname + 'hourly/' + weatherdate + '.json');
       xhr.send(null);
@@ -38,6 +43,7 @@ for (var i = 0; i < dates.length; i++) {
         if (xhr.readyState === DONE) {
           if (xhr.status === OK) {
             console.log(xhr.responseText); // 'This is the returned text.'
+            hourlyTextFormatter(hourlyWeatherDiv, xhr.responseText);
           } else {
             console.log('Error: ' + xhr.status); // An error occurred during the request.
           }
@@ -47,5 +53,38 @@ for (var i = 0; i < dates.length; i++) {
 
     }, false);
 
+}
+
+function hourlyTextFormatter(hourlyDiv, jsonString) {
+  json = JSON.parse(jsonString);
+  console.log(json);
+  var table = document.createElement("table");
+
+  for(var i = 0; i < json.length; i++) {
+    var tr = document.createElement("tr");
+    var hour = document.createElement("td");
+    var date = new Date(json[i].date);
+    hour.textContent = formatTime(date.getHours());
+    var temp = document.createElement("td");
+    temp.textContent = json[i].temp;
+    var description = document.createElement("td");
+    description.textContent = json[i].description;
+
+    tr.appendChild(hour);
+    tr.appendChild(temp);
+    tr.appendChild(description);
+    table.appendChild(tr);
+  }
+  hourlyDiv.appendChild(table);
+}
+
+function formatTime(hour) {
+  var time = ''
+  if (hour < 12) {
+    time = hour + ':00 AM';
+  } else {
+    time = hour % 12 + ':00 PM';
+  }
+  return time;
 }
 </script>
