@@ -7,7 +7,7 @@ class Shelter < ApplicationRecord
     Weather.where(shelter: self).delete_all
 
     base_url = 'http://api.openweathermap.org/data/2.5/forecast/daily?'
-    api_key = '&appid=d6c2dca5173b6aa1e1975757d2eac3e2'
+    api_key = '&appid=' + ENV['OPEN_WEATHER_MAP_API_KEY']
     units = '&units=imperial'
     request_url = base_url + "lat=#{self.latt}&lon=#{self.long}" + units + api_key
     forecast = JSON.load(open(request_url))
@@ -32,7 +32,7 @@ class Shelter < ApplicationRecord
     HourlyWeather.where(shelter: self).delete_all
 
     base_url = 'http://api.openweathermap.org/data/2.5/forecast?'
-    api_key = '&appid=d6c2dca5173b6aa1e1975757d2eac3e2'
+    api_key = '&appid=' + ENV['OPEN_WEATHER_MAP_API_KEY']
     units = '&units=imperial'
     request_url = base_url + "lat=#{self.latt}&lon=#{self.long}" + units + api_key
     forecast = JSON.load(open(request_url))
