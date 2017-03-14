@@ -38,7 +38,13 @@ for (var i = 0; i < dates.length; i++) {
       weatherdateParent = this.parentElement;
       hourlyWeatherDiv = weatherdateParent.getElementsByClassName('hourly-weather')[0];
       var xhr = new XMLHttpRequest();
-      xhr.open('GET', window.location.pathname + 'hourly/' + weatherdate + '.json');
+      var pathname = '';
+      if (window.location.pathname.endsWith('/')) {
+        pathname = window.location.pathname;
+      } else {
+         pathname = window.location.pathname + '/';
+      }
+      xhr.open('GET', pathname + 'hourly/' + weatherdate + '.json');
       xhr.send(null);
       xhr.onreadystatechange = function () {
         var DONE = 4; // readyState 4 means the request is done.
