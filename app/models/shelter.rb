@@ -2,6 +2,14 @@ class Shelter < ApplicationRecord
   has_many :weathers
   belongs_to :state
 
+  def next
+    self.class.where("mileage > ?", mileage).first
+  end
+
+  def previous
+    self.class.where("mileage < ?", mileage).last
+  end
+
   def update_weather
 
     Weather.where(shelter: self).delete_all
