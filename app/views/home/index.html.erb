@@ -1,3 +1,9 @@
+<p>Find shelter by mile.<p>
+<form onsubmit="return nearestShelter();" action="#" accept-charset="UTF-8" method="post">
+  <input type="text" name="mileage" id="mileage" placeholder="NOBO Mileage">
+  <input type="submit" value="Go">
+</form>
+
 <ul>
 <% @states.each do |state, average_weather| %>
   <li><a href="#<%= state %>"><%= state %></a> High: <%= average_weather[:high] %>, Low: <%= average_weather[:low] %></li>
@@ -12,3 +18,13 @@
   <% end %>
   </ul>
 <% end %>
+
+<script type="text/javascript">
+  function nearestShelter() {
+    var mileage = document.getElementById('mileage').value;
+    if (mileage !== '') {
+      window.location.href = '/nearest_shelter/' + mileage;
+    }
+    return false;
+  }
+</script>

@@ -14,5 +14,12 @@ class HomeController < ApplicationController
     end
   end
 
+  def nearest_shelter
+    @shelter = Shelter.order("ABS(mileage - #{ params[:mileage]})").first
+    @shelter.update_weather
+    @weather = Weather.where(shelter: @shelter)
+    render 'shelters/show'
+  end
+
 
 end
