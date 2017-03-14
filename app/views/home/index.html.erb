@@ -4,19 +4,23 @@
   <input type="submit" value="Go">
 </form>
 
-<ul>
-<% @states.each do |state, average_weather| %>
-  <li><a href="#<%= state %>"><%= state %></a> High: <%= average_weather[:high] %>, Low: <%= average_weather[:low] %></li>
-<% end %>
-</ul>
-
-<% @shelters_states.each do |state, shelters| %>
-  <h2 id="<%= state %>"><%= state %></h2>
-  <ul>
-  <% shelters.each do |shelter| %>
-      <li><a href="<%= shelter_path(shelter) %>"><%= shelter.name %></a></li>
-  <% end %>
-  </ul>
+<% @states.each do |state, state_info| %>
+<div>
+  <div class="state btn" data-statename="<%= state %>">
+    <%= state %>
+    <span class="summary">High: <%= state_info[:average_weather][:high] %>, Low: <%= state_info[:average_weather][:low] %></span>
+  </div>
+  <table id="<%= state %>" class="hidden">
+    <% state_info[:shelters].each do |shelter| %>
+    <tr>
+      <td><%= shelter.mileage %></td>
+      <td>
+        <a href="<%= shelter_path(shelter) %>"><%= shelter.name %></a>
+      </td>
+    </tr>
+    <% end %>
+  </table>
+</div>
 <% end %>
 
 <script type="text/javascript">
@@ -26,5 +30,18 @@
       window.location.href = '/nearest_shelter/' + mileage;
     }
     return false;
+  }
+
+  states = document.getElementsByClassName('state');
+  for (var i = 0; i < states.length; i++) {
+      states[i].addEventListener("click", function() {
+        state = this.dataset.statename;
+        stateTable = document.getElementById(state);
+        if (stateTable.className === 'hidden') {
+          stateTable.className = 'show';
+        } else {
+          stateTable.className = 'hidden';
+        }
+      });
   }
 </script>
