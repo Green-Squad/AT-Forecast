@@ -1,3 +1,4 @@
+<h1>Fast AT Weather</h1>
 <p>Find shelter by mile.<p>
 <form onsubmit="return nearestShelter();" action="#" accept-charset="UTF-8" method="post">
   <input type="text" name="mileage" id="mileage" placeholder="NOBO Mileage">
@@ -7,8 +8,10 @@
 <% @states.each do |state, state_info| %>
 <div>
   <div class="state btn" data-statename="<%= state %>">
-    <%= state %>
-    <span class="summary">High: <%= state_info[:average_weather][:high] %>, Low: <%= state_info[:average_weather][:low] %></span>
+    <h4>
+      <%= state %>
+      <small class="summary pull-right">High: <%= state_info[:average_weather][:high] %>, Low: <%= state_info[:average_weather][:low] %></small>
+    </h4>
   </div>
   <table id="<%= state %>" class="hidden">
     <% state_info[:shelters].each do |shelter| %>
