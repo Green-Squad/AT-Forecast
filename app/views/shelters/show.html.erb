@@ -19,7 +19,7 @@
 <% @weather_days.each do |all_weather| %>
   <% weather = all_weather.first %>
   <% hourly_weather = all_weather.last %>
-  <table class="table-fill">
+  <table class="pure-table pure-table-striped">
   <tr class="tr-header">
     <th><strong><%= weather.weather_date.strftime("%A %m/%d/%y") %></strong></th>
     <th><%= weather.high %>&deg;/<%= weather.low %>&deg;</th>
@@ -28,7 +28,7 @@
 
     <tr class="hourly-header">
     <th>Time</th>
-    <th>Temperature (&deg;F)</th>
+    <th>Temp (&deg;F)</th>
     <th>Description</th>
   </tr>
   <% hourly_weather.each do |hour| %>
