@@ -11,7 +11,16 @@ class SheltersController < ApplicationController
   # GET /shelters/1.json
   def show
     @shelter.update_weather
-    @weather = Weather.where(shelter: @shelter)
+    @shelter.update_hourly_weather
+    daily_weather = Weather.where(shelter: @shelter)
+    @weather_days = []
+    daily_weather.each do |dw|
+      date = dw.weather_date
+      hourly_weather = HourlyWeather.where(shelter: @shelter,
+        date: date.beginning_of_day..date.end_of_day)
+      all_weather = [dw, hourly_weather]
+      @weather_days << all_weather
+    end
   end
 
   def hourly

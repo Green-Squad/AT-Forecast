@@ -16,84 +16,34 @@
   <%= @shelter.long %>
 </div>
 
+<% @weather_days.each do |all_weather| %>
+  <% weather = all_weather.first %>
+  <% hourly_weather = all_weather.last %>
+  <table class="table-fill">
+  <tr class="tr-header">
+    <th><strong><%= weather.weather_date.strftime("%A %m/%d/%y") %></strong></th>
+    <th><%= weather.high %>&deg;/<%= weather.low %>&deg;</th>
+    <th><%= weather.description %></th>
+  </tr>
 
-<% @weather.each_with_index do |weather,index| %>
-  <div>
-    <p>Date: <%= weather.weather_date.strftime("%A %m/%d/%y") %>, Low: <%= weather.low %>, High: <%= weather.high %>, Description: <%= weather.description %>, Precip Chance: <%= weather.precip_chance %></p>
-    <% if (index < 5) %>
-    <button data-weatherdate="<%= weather.weather_date %>" class="more">More details</button>
-    <div class="hourly-weather"></div>
-  </div>
+    <tr class="hourly-header">
+    <th>Time</th>
+    <th>Temperature (&deg;F)</th>
+    <th>Description</th>
+  </tr>
+  <% hourly_weather.each do |hour| %>
+
+  <tr>
+    <td> <%= hour.date.strftime("%l:%M %p") %> </td>
+    <td> <%= hour.temp %>&deg; </td>
+    <td> <%= hour.description %> </td>
+  </tr>
+
   <% end %>
+  </table>
+
+
 <% end %>
 
 <%= link_to("Previous", @shelter.previous) unless @shelter.previous.nil? %>
 <%= link_to("Next", @shelter.next) unless @shelter.next.nil? %>
-
-<script type="text/javascript">
-dates = document.getElementsByClassName('more');
-for (var i = 0; i < dates.length; i++) {
-    dates[i].addEventListener("click", function() {
-      weatherdate = this.dataset.weatherdate;
-      weatherdateParent = this.parentElement;
-      hourlyWeatherDiv = weatherdateParent.getElementsByClassName('hourly-weather')[0];
-      var xhr = new XMLHttpRequest();
-      var pathname = '';
-      if (window.location.pathname.endsWith('/')) {
-        pathname = window.location.pathname;
-      } else {
-         pathname = window.location.pathname + '/';
-      }
-      xhr.open('GET', pathname + 'hourly/' + weatherdate + '.json');
-      xhr.send(null);
-      xhr.onreadystatechange = function () {
-        var DONE = 4; // readyState 4 means the request is done.
-        var OK = 200; // status 200 is a successful return.
-        if (xhr.readyState === DONE) {
-          if (xhr.status === OK) {
-            console.log(xhr.responseText); // 'This is the returned text.'
-            hourlyTextFormatter(hourlyWeatherDiv, xhr.responseText);
-          } else {
-            console.log('Error: ' + xhr.status); // An error occurred during the request.
-          }
-        }
-
-      };
-
-    }, false);
-
-}
-
-function hourlyTextFormatter(hourlyDiv, jsonString) {
-  json = JSON.parse(jsonString);
-  console.log(json);
-  var table = document.createElement("table");
-
-  for(var i = 0; i < json.length; i++) {
-    var tr = document.createElement("tr");
-    var hour = document.createElement("td");
-    var date = new Date(json[i].date);
-    hour.textContent = formatTime(date.getHours());
-    var temp = document.createElement("td");
-    temp.textContent = json[i].temp;
-    var description = document.createElement("td");
-    description.textContent = json[i].description;
-
-    tr.appendChild(hour);
-    tr.appendChild(temp);
-    tr.appendChild(description);
-    table.appendChild(tr);
-  }
-  hourlyDiv.appendChild(table);
-}
-
-function formatTime(hour) {
-  var time = ''
-  if (hour < 12) {
-    time = hour + ':00 AM';
-  } else {
-    time = hour % 12 + ':00 PM';
-  }
-  return time;
-}
-</script>

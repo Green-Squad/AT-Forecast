@@ -5,6 +5,17 @@
     <title>FastAtWeather</title>
     <%= csrf_meta_tags %>
     <style>
+      body {font-family: Verdana, Helvetica;}
+      a {
+        color: #18bc9c;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      #shelter-name {
+
+      }
       .hidden {display:none;}
       .state {font-size: 1.5em;}
       .state .summary {font-size: 12px;}
@@ -59,11 +70,113 @@
       padding-left: 15px;
       padding-right: 15px;
     }
+
+  .table-fill {
+  background: white;
+  border-collapse: collapse;
+  padding:5px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.tr-header {
+  background: linear-gradient(154deg,#144f71,#5f9bbd 100%);
+  background-attachment: fixed;
+}
+
+th {
+  color:#D5DDE5;
+  border-bottom:1px solid #9ea7af;
+  font-weight: 100;
+  padding: 24px 24px 24px 24px;
+  text-align:left;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  vertical-align:middle;
+}
+
+th:first-child {
+}
+
+th:last-child {
+  border-right:none;
+}
+
+.hourly-header th {
+  color:#D5DDE5;;
+  background:#144f71;
+  font-weight: 100;
+  padding:15px 24px;
+}
+
+tr {
+  border-top: 1px solid #C1C3D1;
+  border-bottom: 1px solid #C1C3D1;
+  color:#666B85;
+  font-weight:normal;
+}
+
+tr:hover td {
+  background:#4E5066;
+  color:#FFFFFF;
+  border-top: 1px solid #22262e;
+  border-bottom: 1px solid #22262e;
+}
+
+tr:first-child {
+  border-top:none;
+}
+
+tr:nth-child(odd) td {
+  background:#EBEBEB;
+}
+
+tr:nth-child(odd):hover td {
+  background:#4E5066;
+}
+
+td {
+  background:#FFFFFF;
+  padding:20px;
+  text-align:left;
+  vertical-align:middle;
+  font-weight:300;
+  text-shadow: -1px -1px 1px rgba(0, 0, 0, 0.1);
+  border-right: 1px solid #C1C3D1;
+}
+
+td:last-child {
+  border-right: 0px;
+}
+
+th.text-left {
+  text-align: left;
+}
+
+th.text-center {
+  text-align: center;
+}
+
+th.text-right {
+  text-align: right;
+}
+
+td.text-left {
+  text-align: left;
+}
+
+td.text-center {
+  text-align: center;
+}
+
+td.text-right {
+  text-align: right;
+}
     </style>
   </head>
 
   <body>
     <div class="container">
+      <h1><%= link_to('Fast AT Weather', root_path) %></h1>
       <%= yield %>
     </div>
   </body>
