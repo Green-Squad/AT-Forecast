@@ -1,18 +1,26 @@
 <p>Find shelter by mile.</p>
+<div>
 <form onsubmit="return nearestShelter();" action="#" accept-charset="UTF-8" method="post" class="pure-form">
-  <input type="text" name="mileage" id="mileage" placeholder="NOBO Mileage">
-  <input type="submit" value="Go" class="pure-button pure-button-primary">
+  <div class="pure-g">
+    <div class="pure-u-5-6">
+      <input type="text" name="mileage" id="mileage" class="fill-width" placeholder="NOBO Mileage">
+    </div>
+    <div class="pure-u-1-6">
+      <input type="submit" value="Go" class="pure-button pure-button-primary button-margin">
+    </div>
+  </div>
 </form>
+</div>
 
 <% @states.each do |state, state_info| %>
   <div class="state-content">
-    <button class="state pure-button" data-statename="<%= state %>">
+    <button class="state pure-button fill-width" data-statename="<%= state %>">
       <%= state %>
       <small class="summary"><%= state_info[:average_weather][:high] %>&deg; / <%= state_info[:average_weather][:low] %>&deg;</small>
     </button>
 
     <div id="<%= state %>" class="hidden">
-      <table class="pure-table pure-table-striped shelter-list">
+      <table class="pure-table pure-table-striped shelter-list fill-width">
         <% state_info[:shelters].each do |shelter| %>
         <tr>
           <td><%= shelter.mileage %></td>
