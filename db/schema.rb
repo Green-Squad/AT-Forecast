@@ -12,6 +12,9 @@
 
 ActiveRecord::Schema.define(version: 20170310193844) do
 
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "plpgsql"
+
   create_table "hourly_weathers", force: :cascade do |t|
     t.datetime "date"
     t.integer  "temp"
@@ -20,7 +23,7 @@ ActiveRecord::Schema.define(version: 20170310193844) do
     t.integer  "shelter_id"
     t.datetime "created_at",    null: false
     t.datetime "updated_at",    null: false
-    t.index ["shelter_id"], name: "index_hourly_weathers_on_shelter_id"
+    t.index ["shelter_id"], name: "index_hourly_weathers_on_shelter_id", using: :btree
   end
 
   create_table "shelters", force: :cascade do |t|
@@ -32,7 +35,7 @@ ActiveRecord::Schema.define(version: 20170310193844) do
     t.integer  "state_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["state_id"], name: "index_shelters_on_state_id"
+    t.index ["state_id"], name: "index_shelters_on_state_id", using: :btree
   end
 
   create_table "states", force: :cascade do |t|
@@ -51,7 +54,10 @@ ActiveRecord::Schema.define(version: 20170310193844) do
     t.integer  "shelter_id"
     t.datetime "created_at",    null: false
     t.datetime "updated_at",    null: false
-    t.index ["shelter_id"], name: "index_weathers_on_shelter_id"
+    t.index ["shelter_id"], name: "index_weathers_on_shelter_id", using: :btree
   end
 
+  add_foreign_key "hourly_weathers", "shelters"
+  add_foreign_key "shelters", "states"
+  add_foreign_key "weathers", "shelters"
 end

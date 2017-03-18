@@ -1,6 +1,6 @@
 <p id="notice"><%= notice %></p>
 
-  <h1><%= @shelter.name %></h1>
+  <h1 id="shelter-name"><%= @shelter.name %></h1>
 
 <div>
   NOBO Mile <%= @shelter.mileage %>
@@ -20,25 +20,24 @@
   <% weather = all_weather.first %>
   <% hourly_weather = all_weather.last %>
   <table class="pure-table pure-table-striped">
-  <tr class="tr-header">
-    <th><strong><%= weather.weather_date.strftime("%A %m/%d/%y") %></strong></th>
-    <th><%= weather.high %>&deg;/<%= weather.low %>&deg;</th>
-    <th><%= weather.description %></th>
-  </tr>
+    <tr class="tr-header">
+      <th><strong><%= weather.weather_date.strftime("%A %m/%d/%y") %></strong></th>
+      <th><%= weather.high %>&deg;/<%= weather.low %>&deg;</th>
+      <th><%= weather.description %></th>
+    </tr>
 
     <tr class="hourly-header">
-    <th>Time</th>
-    <th>Temp (&deg;F)</th>
-    <th>Description</th>
-  </tr>
-  <% hourly_weather.each do |hour| %>
+      <th>Time</th>
+      <th>Temp (&deg;F)</th>
+      <th>Description</th>
+    </tr>
+    <% hourly_weather.each do |hour| %>
 
-  <tr>
-    <td> <%= hour.date.strftime("%l:%M %p") %> </td>
-    <td> <%= hour.temp %>&deg; </td>
-    <td> <%= hour.description %> </td>
-  </tr>
-
+    <tr>
+      <td> <%= hour.date.strftime("%l:%M %p") %> </td>
+      <td> <%= hour.temp %>&deg; </td>
+      <td> <%= hour.description %> </td>
+    </tr>
   <% end %>
   </table>
 

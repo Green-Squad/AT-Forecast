@@ -5,24 +5,25 @@
 </form>
 
 <% @states.each do |state, state_info| %>
-<div>
-  <div class="state pure-button" data-statename="<%= state %>">
-    <h4>
+  <div class="state-content">
+    <button class="state pure-button" data-statename="<%= state %>">
       <%= state %>
-      <small class="summary pull-right">High: <%= state_info[:average_weather][:high] %>, Low: <%= state_info[:average_weather][:low] %></small>
-    </h4>
+      <small class="summary pull-right"><%= state_info[:average_weather][:high] %>&deg; / <%= state_info[:average_weather][:low] %>&deg;</small>
+    </button>
+
+    <div id="<%= state %>" class="hidden">
+      <table class="shelter-list">
+        <% state_info[:shelters].each do |shelter| %>
+        <tr>
+          <td><%= shelter.mileage %></td>
+          <td>
+            <a href="<%= shelter_path(shelter) %>"><%= shelter.name %></a>
+          </td>
+        </tr>
+        <% end %>
+      </table>
+    </div>
   </div>
-  <table id="<%= state %>" class="hidden">
-    <% state_info[:shelters].each do |shelter| %>
-    <tr>
-      <td><%= shelter.mileage %></td>
-      <td>
-        <a href="<%= shelter_path(shelter) %>"><%= shelter.name %></a>
-      </td>
-    </tr>
-    <% end %>
-  </table>
-</div>
 <% end %>
 
 <script type="text/javascript">
@@ -38,11 +39,11 @@
   for (var i = 0; i < states.length; i++) {
       states[i].addEventListener("click", function() {
         state = this.dataset.statename;
-        stateTable = document.getElementById(state);
-        if (stateTable.className === 'hidden') {
-          stateTable.className = 'show';
+        stateWeather = document.getElementById(state);
+        if (stateWeather.className === 'hidden') {
+          stateWeather.className = 'show';
         } else {
-          stateTable.className = 'hidden';
+          stateWeather.className = 'hidden';
         }
       });
   }
