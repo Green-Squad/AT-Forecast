@@ -1,20 +1,17 @@
-<p id="notice"><%= notice %></p>
+  <p id="notice"><%= notice %></p>
 
-  <h1 id="shelter-name"><%= @shelter.name %></h1>
-
-<div>
-  NOBO Mile <%= @shelter.mileage %>
-</div>
-
-<div>
-  <%= @shelter.elevation %> feet
-</div>
-
-<div>  <%= @shelter.state.name %></div>
-<div>
-  <%= @shelter.latt %>,
-  <%= @shelter.long %>
-</div>
+  <section id="shelter-info">
+    <h1 id="shelter-name">
+      <%= @shelter.name %>
+      <small>Elevation: <%= @shelter.elevation %> feet</small>
+    </h1>
+    <div>
+      NOBO Mile <%= @shelter.mileage %>
+    </div>
+    <div>
+      <%= @shelter.state.name %> (<%= @shelter.latt %>, <%= @shelter.long %>)
+    </div>
+  </section>
 
 <% @weather_days.each do |all_weather| %>
   <% weather = all_weather.first %>
@@ -32,17 +29,14 @@
       <th>Description</th>
     </tr>
     <% hourly_weather.each do |hour| %>
-
-    <tr>
-      <td> <%= hour.date.strftime("%l:%M %p") %> </td>
-      <td> <%= hour.temp %>&deg; </td>
-      <td> <%= hour.description %> </td>
-    </tr>
+      <tr>
+        <td> <%= hour.date.strftime("%l:%M %p") %> </td>
+        <td> <%= hour.temp %>&deg; </td>
+        <td> <%= hour.description %> </td>
+      </tr>
+    <% end %>
+    </table>
   <% end %>
-  </table>
 
-
-<% end %>
-
-<%= link_to("Previous", @shelter.previous) unless @shelter.previous.nil? %>
-<%= link_to("Next", @shelter.next) unless @shelter.next.nil? %>
+<%= link_to("Previous", @shelter.previous, class: "pure-button pure-button-primary") unless @shelter.previous.nil? %>
+<%= link_to("Next", @shelter.next, class: "pure-button pure-button-primary") unless @shelter.next.nil? %>

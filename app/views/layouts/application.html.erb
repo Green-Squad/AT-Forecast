@@ -5,7 +5,10 @@
     <title>FastAtWeather</title>
     <%= csrf_meta_tags %>
     <style>
-      body {font-family: Verdana, Helvetica;}
+      body {
+        font-family: Verdana, Helvetica;
+        padding-bottom: 15px;
+      }
       a {
         color: #18bc9c;
         text-decoration: none;
@@ -25,7 +28,7 @@
       .state {
         font-size: 2em;
       }
-      .state .summary {
+      #shelter-info small, .summary {
         font-size: 12px;
       }
       .shelter-list {
