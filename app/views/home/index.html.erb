@@ -1,4 +1,4 @@
-<p>Find shelter by mile.<p>
+<p>Find shelter by mile.</p>
 <form onsubmit="return nearestShelter();" action="#" accept-charset="UTF-8" method="post" class="pure-form">
   <input type="text" name="mileage" id="mileage" placeholder="NOBO Mileage">
   <input type="submit" value="Go" class="pure-button pure-button-primary">
@@ -12,7 +12,7 @@
     </button>
 
     <div id="<%= state %>" class="hidden">
-      <table class="shelter-list">
+      <table class="pure-table pure-table-striped shelter-list">
         <% state_info[:shelters].each do |shelter| %>
         <tr>
           <td><%= shelter.mileage %></td>
