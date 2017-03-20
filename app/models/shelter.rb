@@ -23,6 +23,13 @@ class Shelter < ApplicationRecord
     JSON.load(open(request_url))
   end
 
+  def convert_wind(speed_in_ms, degrees)
+    speed_in_mph = (speed_in_ms / 0.44704).round;
+    direction_index = ((degrees / 45) + 0.5).to_i % 8
+    directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+    "#{speed_in_mph} mph #{directions[direction_index]}"
+  end
+
   def update_weather
     Weather.where(shelter: self).delete_all
 
@@ -35,10 +42,10 @@ class Shelter < ApplicationRecord
       description = weather['weather'][0]['description']
       wind_direction = weather['deg']
       wind_speed = weather['speed']
+      wind = convert_wind(wind_speed, wind_direction)
 
-      description += " Wind: #{wind_speed} m/s at #{wind_direction} degrees"
       Weather.create(weather_date: weather_date, high: high, low: low,
-        description: description, precip_chance:0, shelter:self)
+        description: description, wind: wind, shelter:self)
     end
   end
 
@@ -53,10 +60,10 @@ class Shelter < ApplicationRecord
       description = weather['weather'][0]['description']
       wind_direction = weather['wind']['deg']
       wind_speed = weather['wind']['speed']
+      wind = convert_wind(wind_speed, wind_direction)
 
-      description += " Wind: #{wind_speed} m/s at #{wind_direction} degrees"
       HourlyWeather.create(date: date, temp: temp,
-        description: description, precip_chance:0, shelter:self)
+        description: description, wind: wind, shelter:self)
     end
   end
 

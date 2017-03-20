@@ -22,24 +22,28 @@
         <th>Time</th>
         <th>Temp (&deg;F)</th>
         <th>Description</th>
+        <th>Wind</th>
       </tr>
       <tr class="hourly-header table-align-left">
         <th><strong><%= weather.weather_date.strftime("%A %m/%d") %></strong></th>
         <th><%= weather.high %>&deg;/<%= weather.low %>&deg;</th>
         <th><%= weather.description %></th>
+        <th><%= weather.wind %></th>
       </tr>
       <% if hourly_weather.empty? %>
       <tr>
         <td>N/A</td>
         <td>N/A</td>
         <td>No hourly weather available.</td>
+        <td>N/A</td>
       </tr>
       <% else %>
         <% hourly_weather.each do |hour| %>
           <tr>
-            <td> <%= hour.date.strftime("%l:%M %p") %> </td>
-            <td> <%= hour.temp %>&deg; </td>
-            <td> <%= hour.description %> </td>
+            <td><%= hour.date.strftime("%l:%M %p") %> </td>
+            <td><%= hour.temp %>&deg;</td>
+            <td><%= hour.description %></td>
+            <td><%= hour.wind %></td>
           </tr>
         <% end %>
       <% end %>
