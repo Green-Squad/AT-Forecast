@@ -10,18 +10,25 @@ class Shelter < ApplicationRecord
     self.class.where("mileage < ?", mileage).last
   end
 
-  def update_weather
-
-    Weather.where(shelter: self).delete_all
-
-    base_url = 'http://api.openweathermap.org/data/2.5/forecast/daily?'
+  def load_weather(type)
+    base_url = 'http://api.openweathermap.org/data/2.5/forecast'
+    if type == 'daily'
+      base_url += '/daily?'
+    elsif type == 'hourly'
+      base_url += '?'
+    end
     api_key = '&appid=' + ENV['OPEN_WEATHER_MAP_API_KEY']
     units = '&units=imperial'
     request_url = base_url + "lat=#{self.latt}&lon=#{self.long}" + units + api_key
-    forecast = JSON.load(open(request_url))
+    JSON.load(open(request_url))
+  end
+
+  def update_weather
+    Weather.where(shelter: self).delete_all
+
+    forecast = load_weather('daily')
 
     forecast['list'].each do |weather|
-    #  weather_date = weather['dt']
       weather_date = DateTime.strptime("#{weather['dt']}",'%s')
       high = weather['temp']['max']
       low = weather ['temp']['min']
@@ -32,18 +39,13 @@ class Shelter < ApplicationRecord
       description += " Wind: #{wind_speed} m/s at #{wind_direction} degrees"
       Weather.create(weather_date: weather_date, high: high, low: low,
         description: description, precip_chance:0, shelter:self)
-#      precip_chance =
     end
   end
 
   def update_hourly_weather
     HourlyWeather.where(shelter: self).delete_all
 
-    base_url = 'http://api.openweathermap.org/data/2.5/forecast?'
-    api_key = '&appid=' + ENV['OPEN_WEATHER_MAP_API_KEY']
-    units = '&units=imperial'
-    request_url = base_url + "lat=#{self.latt}&lon=#{self.long}" + units + api_key
-    forecast = JSON.load(open(request_url))
+    forecast = load_weather('hourly')
 
     forecast['list'].each do |weather|
       date = DateTime.strptime("#{weather['dt']}",'%s')

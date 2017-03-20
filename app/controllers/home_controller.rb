@@ -14,17 +14,7 @@ class HomeController < ApplicationController
 
   def nearest_shelter
     @shelter = Shelter.order("ABS(mileage - #{ params[:mileage]})").first
-    @shelter.update_weather
-    @shelter.update_hourly_weather
-    daily_weather = Weather.where(shelter: @shelter).order(:weather_date)
-    @weather_days = []
-    daily_weather.each do |dw|
-      date = dw.weather_date
-      hourly_weather = HourlyWeather.where(shelter: @shelter,
-        date: date.beginning_of_day..date.end_of_day)
-      all_weather = [dw, hourly_weather]
-      @weather_days << all_weather
-    end
+    @weather_days = Weatherable.show_shelter(@shelter)
     render 'shelters/show'
   end
 

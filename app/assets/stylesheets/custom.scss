@@ -1,0 +1,74 @@
+body {
+  font-family: Verdana, Helvetica;
+  padding-bottom: 15px;
+}
+a {
+  color: #18bc9c;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+#shelter-name {
+  font-size: 1.5em;
+}
+.hidden {
+  display:none;
+}
+.fill-width {
+  width: 100%;
+}
+.button-margin {
+  margin-left: 10px;
+}
+.state-content {
+  margin: 10px 0;
+}
+.state {
+  font-size: 2em;
+}
+#shelter-info small, .summary {
+  font-size: 12px;
+}
+.shelter-list {
+  margin: 10px;
+}
+.pure-table-striped {
+  margin: 20px 0;
+}
+.pure-table-striped tr:odd {
+  background-color: #ccc;
+}
+.container {
+  max-width: 900px;
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+}
+.tr-header {
+  background-color: #0663b9;
+  color: #efefef
+}
+.hourly-header {
+  background-color: #3086d6;
+  color: #efefef
+}
+
+.table-align-left th, .table-align-left td { text-align: left; }
+
+@media (min-width: 768px) {
+  .container {
+    width: 750px;
+  }
+}
+@media (min-width: 992px) {
+  .container {
+    width: 970px;
+  }
+}
+@media (min-width: 1200px) {
+  .container {
+    width: 1170px;
+  }
+}

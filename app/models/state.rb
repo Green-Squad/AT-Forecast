@@ -1,11 +1,12 @@
 class State < ApplicationRecord
   has_many :shelters
+  
   def get_average_weather
     date = Time.now
     state_id = self.id
-    weathers = Weather.joins("INNER JOIN shelters ON shelters.id = weathers.shelter_id WHERE shelters.state_id = #{state_id} AND weathers.weather_date <= '#{date}'").select('weathers.id, high, low')
-    logger.debug "asdfasdf"
-    logger.debug weathers.inspect
+    weathers = Weather.joins("INNER JOIN shelters
+      ON shelters.id = weathers.shelter_id WHERE shelters.state_id = #{state_id}
+      AND weathers.weather_date <= '#{date}'").select('weathers.id, high, low')
     low = 0
     high = 0
     weathers.each do |weather|
