@@ -15,7 +15,7 @@
     </div>
   </section>
   <% if @weather_days.first.first.low < 35 %>
-    <div class="alert alert-danger"><strong>Freeze Warning!</strong> Sleep with your water filter to prevent it from freezing.</div>
+    <div class="alert alert-danger"><strong>Freeze Warning!</strong> Sleep with your water filter tonight to prevent it from freezing.</div>
   <% end %>
   <% @weather_days.each do |all_weather| %>
     <% weather = all_weather.first %>
@@ -28,7 +28,7 @@
         <th>Wind</th>
       </tr>
       <tr class="hourly-header table-align-left">
-        <th><strong><%= weather.weather_date.strftime("%A %m/%d") %></strong></th>
+        <th><strong><%= weather.weather_date.strftime("%a %m/%d") %></strong></th>
         <th><%= weather.high %>&deg;/<%= weather.low %>&deg;</th>
         <th><%= weather.description %></th>
         <th><%= weather.wind %></th>
