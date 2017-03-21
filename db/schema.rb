@@ -57,4 +57,7 @@ ActiveRecord::Schema.define(version: 20170320191554) do
     t.index ["shelter_id"], name: "index_weathers_on_shelter_id", using: :btree
   end
 
+  add_foreign_key "hourly_weathers", "shelters"
+  add_foreign_key "shelters", "states"
+  add_foreign_key "weathers", "shelters"
 end

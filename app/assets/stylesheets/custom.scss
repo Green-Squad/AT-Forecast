@@ -3,14 +3,19 @@ body {
   padding-bottom: 15px;
 }
 a {
-  color: #18bc9c;
   text-decoration: none;
 }
 a:hover {
   text-decoration: underline;
 }
+.brand-title a {
+  color: #fff;
+}
 #shelter-name {
   font-size: 1.5em;
+}
+#mile-search-form {
+  padding-bottom: 10px;
 }
 .hidden {
   display:none;
