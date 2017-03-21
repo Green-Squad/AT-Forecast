@@ -18,19 +18,17 @@
   <% @weather_days.each do |all_weather| %>
     <% weather = all_weather.first %>
     <% hourly_weather = all_weather.last %>
-    <h2 class="content-subhead"><%= weather.weather_date.strftime("%A %B %-d, %Y") %></h2>
+    <h2 class="content-subhead">
+      <%= weather.weather_date.strftime("%A %B %-d, %Y") %>
+      <span class="post-category pull-right"><%= weather.description %></span>
+      <span class="post-category post-category-design pull-right"><%= weather.high %>&deg; / <%= weather.low %>&deg;</span>
+    </h2>
     <table class="pure-table pure-table-striped fill-width">
       <tr class="tr-header">
         <th>Time</th>
         <th>Temp (&deg;F)</th>
         <th>Description</th>
         <th>Wind</th>
-      </tr>
-      <tr class="hourly-header table-align-left">
-        <th><strong><%= weather.weather_date.strftime("%a %m/%d") %></strong></th>
-        <th><%= weather.high %>&deg;/<%= weather.low %>&deg;</th>
-        <th><%= weather.description %></th>
-        <th><%= weather.wind %></th>
       </tr>
       <% if hourly_weather.empty? %>
       <tr>
@@ -51,5 +49,5 @@
       <% end %>
       </table>
     <% end %>
-<%= link_to("Previous", @shelter.previous, class: "pure-button pure-button-primary") unless @shelter.previous.nil? %>
-<%= link_to("Next", @shelter.next, class: "pure-button pure-button-primary") unless @shelter.next.nil? %>
+<%= link_to("Previous Shelter", @shelter.previous, class: "pure-button pure-button-primary") unless @shelter.previous.nil? %>
+<%= link_to("Next Shelter", @shelter.next, class: "pure-button pure-button-primary") unless @shelter.next.nil? %>

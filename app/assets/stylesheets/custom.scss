@@ -1,5 +1,6 @@
 body {
   font-family: Verdana, Helvetica;
+  color: #252424;
   padding-bottom: 15px;
 }
 a {
@@ -17,6 +18,15 @@ a:hover {
 #mile-search-form {
   padding-bottom: 10px;
 }
+.content-subhead .post-category {
+  padding: 4px 6px;
+}
+.pull-right {
+  float: right;
+}
+.pull-left {
+  float: left;
+}
 .hidden {
   display:none;
 }
@@ -26,11 +36,16 @@ a:hover {
 .button-margin {
   margin-left: 10px;
 }
+.state-content .pure-button-hover, .state-content .pure-button:focus, .state-content .pure-button:hover {
+  background-image: none;
+  background-color: #cacaca;
+}
 .state-content {
   margin: 10px 0;
 }
 .state {
   font-size: 2em;
+  text-align: left !important;
 }
 #shelter-info small, .summary {
   font-size: 12px;
@@ -55,11 +70,7 @@ a:hover {
   margin-left: auto;
 }
 .tr-header {
-  background-color: #0663b9;
-  color: #efefef
-}
-.hourly-header {
-  background-color: #3086d6;
+  background-color: #3498db;
   color: #efefef
 }
 
@@ -96,6 +107,13 @@ a:hover {
     color: #a94442;
 }
 
+.pure-button-primary {
+  background-color: #2980b9 !important;
+}
+.pure-button-primary:hover {
+  background-color: #3498db !important;
+}
+
 @media (min-width: 768px) {
   .container {
     width: 750px;
@@ -112,25 +130,28 @@ a:hover {
   }
 }
 
-@media all and (min-width: 960px) {
+@media (min-width: 960px) {
     body{
         font-size: 18px;
     }
 }
 
-@media all and (max-width: 959px) and (min-width: 600px) {
+@media (max-width: 959px) and (min-width: 600px) {
     body{
         font-size: 16px;
     }
 }
 
-@media all and (max-width: 599px) and (min-width: 320px) {
+@media (max-width: 599px) and (min-width: 320px) {
     body{
         font-size: 12px;
     }
+    .content-subhead .post-category {
+      padding: 3px 5px;
+    }
 }
 
-@media all and (max-width: 319px) and (min-width: 0px) {
+@media (max-width: 319px) and (min-width: 0px) {
     body{
         font-size: 9px;
     }

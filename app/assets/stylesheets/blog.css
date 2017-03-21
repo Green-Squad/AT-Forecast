@@ -34,7 +34,7 @@ h3 {
 }
 
 .sidebar {
-    background: rgb(61, 79, 93);
+    background: #2980b9;
     color: #fff;
 }
 
@@ -47,7 +47,7 @@ h3 {
 }
 .brand-tagline {
     font-weight: 300;
-    color: rgb(176, 202, 219);
+    color: #cde1ef;
 }
 
 .nav-list {
