@@ -26,7 +26,7 @@
         <div id="<%= state %>" class="hidden">
           <table class="pure-table pure-table-striped shelter-list fill-width">
             <% state_info[:shelters].each do |shelter| %>
-            <tr>
+            <tr class="clickable-shelter" data-href="<%= shelter_url(shelter) %>">
               <td><%= shelter.mileage %></td>
               <td>
                 <a href="<%= shelter_path(shelter) %>"><%= shelter.name %></a>
@@ -41,6 +41,13 @@
 </div>
 
 <script type="text/javascript">
+  var clickableShelters = document.getElementsByClassName('clickable-shelter');
+  for (var i = 0; i < clickableShelters.length; i++) {
+    clickableShelters[i].addEventListener('click', function() {
+      shelterPath = this.dataset.href;
+      window.location.href = shelterPath;
+    });
+  }
   function nearestShelter() {
     var mileage = document.getElementById('mileage').value;
     if (mileage !== '') {
@@ -51,7 +58,7 @@
 
   states = document.getElementsByClassName('state');
   for (var i = 0; i < states.length; i++) {
-      states[i].addEventListener("click", function() {
+      states[i].addEventListener('click', function() {
         state = this.dataset.statename;
         stateWeather = document.getElementById(state);
         if (stateWeather.className === 'hidden') {
