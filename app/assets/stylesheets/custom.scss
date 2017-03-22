@@ -113,6 +113,10 @@ a:hover {
 .pure-button-primary:hover {
   background-color: #3498db !important;
 }
+.pure-table td, .pure-table th {
+  border-left: none !important;
+  text-align: left !important;
+}
 
 .clear-fix {clear:both;}
 @media (min-width: 768px) {

@@ -27,6 +27,15 @@ h3 {
     padding: 0;
 }
 
+.display-table {
+  display: table;
+}
+
+.display-table-cell {
+  display: table-cell;
+  vertical-align: middle;
+}
+
 .header {
     text-align: center;
     top: auto;
@@ -120,17 +129,30 @@ h3 {
     background: #999;
     font-size: 80%;
 }
-    .post-category-design {
-        background: #5aba59;
+    .post-category-temp {
+      background: #ededed;
+      color: #252424;
     }
-    .post-category-pure {
-        background: #4d85d1;
+    .post-category-clear {
+      background: #3498db;
     }
-    .post-category-yui {
-        background: #8156a7;
+    .post-category-cloudy {
+      background: #8d949c;
     }
-    .post-category-js {
-        background: #df2d4f;
+    .post-category-rain {
+      background: #4569c3;
+    }
+    .post-category-snow {
+      background: #b14a98;
+    }
+    .post-category-fog {
+      background: #bbae84;
+    }
+    .post-category-extreme {
+      background: #D91E18;
+    }
+    .post-category-default {
+      background: #eee;
     }
 
 .post-images {

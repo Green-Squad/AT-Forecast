@@ -1,23 +1,27 @@
 <h2 class="content-subhead">Find Shelter by mile.</h2>
 <form id="mile-search-form" onsubmit="return nearestShelter();" action="#" accept-charset="UTF-8" method="post" class="pure-form pure-g">
-    <div class="pure-u-5-6">
-      <input type="number" step="0.1" name="mileage" id="mileage" class="pure-u-1" placeholder="NOBO Mileage">
+  <div class="pure-u-5-6">
+    <input type="number" step="0.1" name="mileage" id="mileage" class="pure-u-1" placeholder="NOBO Mileage">
+  </div>
+  <div class="pure-u-1-6">
+    <div class="pure-g">
+      <div class="pure-u-1-24"></div>
+      <input type="submit" value="Go" class="pure-button pure-button-primary pure-u-23-24">
     </div>
-    <div class="pure-u-1-6">
-      <div class="pure-g">
-        <div class="pure-u-1-24"></div>
-        <input type="submit" value="Go" class="pure-button pure-button-primary pure-u-23-24">
-      </div>
-    </div>
+  </div>
 </form>
 
 <h2 class="content-subhead">Find Shelter by state.</h2>
 <% @states.each do |state, state_info| %>
   <div class="state-content pure-g">
     <div class="pure-u-1 pure-u-md-2-3">
-      <button class="state pure-button pure-u-1" data-statename="<%= state %>">
-        <span class="pull-left"><%= state %></span>
-        <span class="post-category pull-right"><%= state_info[:average_weather][:high] %>&deg; / <%= state_info[:average_weather][:low] %>&deg;</span>
+      <button class="state pure-button pure-u-1 display-table" data-statename="<%= state %>">
+        <div class="table-cell pull-left">
+          <%= state %>
+        </div>
+        <div class="table-cell pull-right">
+          <span class="post-category"><%= state_info[:average_weather][:high] %>&deg; / <%= state_info[:average_weather][:low] %>&deg;</span>
+        </div>
       </button>
 
       <div id="<%= state %>" class="hidden">
