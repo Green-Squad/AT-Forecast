@@ -1,10 +1,15 @@
+<% content_for :sidebar do %>
+  <p class="brand-tagline">
+    The fast, free and <a href="https://github.com/Green-Squad/Fast-AT-Weather">open source</a> solution for weather on the trail.
+  </p>
+<% end %>
 <h2 class="content-subhead">Find Shelter by mile.</h2>
 <form id="mile-search-form" onsubmit="return nearestShelter();" action="#" accept-charset="UTF-8" method="post" class="pure-form pure-g">
   <div class="pure-u-5-6">
     <input type="number" step="0.1" name="mileage" id="mileage" class="pure-u-1" placeholder="NOBO Mileage">
   </div>
   <div class="pure-u-1-6">
-    <div class="pure-g">
+    <div class="pure-g fill-height">
       <div class="pure-u-1-24"></div>
       <input type="submit" value="Go" class="pure-button pure-button-primary pure-u-23-24">
     </div>
@@ -68,4 +73,9 @@
         }
       });
   }
+  document.addEventListener('keydown', (event) => {
+    if (event.keyCode === 9) {
+      nearestShelter();
+    }
+  });
 </script>

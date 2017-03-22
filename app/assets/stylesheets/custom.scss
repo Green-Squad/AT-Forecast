@@ -33,6 +33,12 @@ a:hover {
 .fill-width {
   width: 100%;
 }
+.fill-height {
+  height: 100%;
+}
+#mileage {
+  margin-bottom: 0 !important;
+}
 .button-margin {
   margin-left: 10px;
 }
@@ -118,6 +124,10 @@ a:hover {
   text-align: left !important;
 }
 
+.sidebar a {
+  color: #fff
+}
+
 .clear-fix {clear:both;}
 @media (min-width: 768px) {
   .container {
@@ -172,5 +182,11 @@ a:hover {
   .break-pull-mobile {
     float: left !important;
     margin-top: 3px;
+  }
+  .content-subhead {
+    font-size: 120%;
+  }
+  .state.pure-button {
+    padding: .8em 1em;
   }
 }
