@@ -36,7 +36,6 @@
               break if weather_type.present?
             end
             weather_type = weather_type.present? ? weather_type : 'default' %>
-            <%= loops %>
           <span class="post-category post-category-<%= weather_type %> pull-right break-pull-mobile"><%= weather.description %></span>
           <span class="post-category post-category-temp pull-right break-pull-mobile"><%= weather.high %>&deg; / <%= weather.low %>&deg;</span>
         </div>
