@@ -114,6 +114,7 @@ a:hover {
   background-color: #3498db !important;
 }
 
+.clear-fix {clear:both;}
 @media (min-width: 768px) {
   .container {
     width: 750px;
@@ -144,10 +145,13 @@ a:hover {
 
 @media (max-width: 599px) and (min-width: 320px) {
     body{
-        font-size: 12px;
+        font-size: 13px;
     }
     .content-subhead .post-category {
       padding: 3px 5px;
+    }
+    .state.pure-button {
+      font-size: 14px;
     }
 }
 
@@ -155,4 +159,14 @@ a:hover {
     body{
         font-size: 9px;
     }
+    .state.pure-button {
+      font-size: 14px;
+    }
+}
+
+@media (max-width: 48em) {
+  .break-pull-mobile {
+    float: left !important;
+    margin-top: 3px;
+  }
 }
