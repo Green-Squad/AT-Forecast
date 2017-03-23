@@ -1,10 +1,10 @@
 class HomeController < ApplicationController
 
   def index
-    cached_html = File.new(Rails.root.join('app', 'views', 'static', 'index.html'), 'r')
+    cached_html_path = Rails.root.join('app', 'views', 'static', 'index.html')
+    cached_html = Pathname(cached_html_path).exist? ? File.new(cached_html_path, 'r') : nil
     seconds_in_hour = 3600.0
-    if ((Time.now - cached_html.mtime).to_i / seconds_in_hour > 2)
-
+    if (cached_html.nil? || (Time.now - cached_html.mtime).to_i / seconds_in_hour > 2)
       @states = {}
       states = State.all
 
@@ -16,7 +16,8 @@ class HomeController < ApplicationController
       end
       rendered_html = render_to_string(template: 'home/index')
       compressor = HtmlCompressor::Compressor.new
-      File.write(Rails.root.join('app', 'views', 'static', 'index.html'), compressor.compress(rendered_html))
+      File.write(cached_html_path, compressor.compress(rendered_html))
+      cached_html = File.new(cached_html_path, 'r')
     end
 
     render html: cached_html.read.html_safe

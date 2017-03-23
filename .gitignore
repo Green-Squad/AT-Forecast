@@ -24,4 +24,4 @@
 /vendor/cache/*
 
 /app/views/static/*
-!/app/views/static/.gitkeep 
+!/app/views/static/.gitkeep
