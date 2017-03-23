@@ -10,6 +10,16 @@ class Shelter < ApplicationRecord
     self.class.where("mileage < ?", mileage).last
   end
 
+  def self.update_all
+    Thread.new do
+      Shelter.all.each do |shelter|
+        shelter.update_weather
+        shelter.update_hourly_weather
+        sleep 2
+      end
+    end
+  end
+
   def load_weather(type)
     base_url = 'http://api.openweathermap.org/data/2.5/forecast'
     if type == 'daily'

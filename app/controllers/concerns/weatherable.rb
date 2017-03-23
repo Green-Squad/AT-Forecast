@@ -1,8 +1,6 @@
 module Weatherable extend ActiveSupport::Concern
 
   def self.show_shelter(shelter)
-    shelter.update_weather
-    shelter.update_hourly_weather
     daily_weather = Weather.where(shelter: shelter).order(:weather_date)
     weather_days = []
     daily_weather.each do |dw|
