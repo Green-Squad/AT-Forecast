@@ -22,3 +22,6 @@
 
 .env
 /vendor/cache/*
+
+/app/views/static/*
+!/app/views/static/.gitkeep 

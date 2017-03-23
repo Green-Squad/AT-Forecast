@@ -28,7 +28,6 @@
           <span class="post-category"><%= state_info[:average_weather][:high] %>&deg; / <%= state_info[:average_weather][:low] %>&deg;</span>
         </div>
       </div>
-
       <div id="<%= state.to_s.delete(' ') %>" class="hidden">
         <table class="pure-table pure-table-striped shelter-list fill-width">
           <% state_info[:shelters].each do |shelter| %>
