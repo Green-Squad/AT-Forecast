@@ -20,16 +20,16 @@
 <% @states.each do |state, state_info| %>
   <div class="state-content pure-g">
     <div class="pure-u-1 pure-u-md-2-3">
-      <button class="state pure-button pure-u-1 display-table" data-statename="<%= state %>">
+      <div class="state pure-button pure-u-1 display-table" data-statename="<%= state.to_s.delete(' ') %>">
         <div class="table-cell pull-left">
           <%= state %>
         </div>
         <div class="table-cell pull-right">
           <span class="post-category"><%= state_info[:average_weather][:high] %>&deg; / <%= state_info[:average_weather][:low] %>&deg;</span>
         </div>
-      </button>
+      </div>
 
-      <div id="<%= state %>" class="hidden">
+      <div id="<%= state.to_s.delete(' ') %>" class="hidden">
         <table class="pure-table pure-table-striped shelter-list fill-width">
           <% state_info[:shelters].each do |shelter| %>
           <tr class="clickable-shelter" data-href="<%= shelter_url(shelter) %>">
