@@ -68,5 +68,6 @@
       <% end %>
       </table>
     <% end %>
+    <p>Data last updated <%= @weather_days.first.first.created_at.strftime("%A %B %-d, %Y at %l:%M %p") %>.</p>
 <%= link_to("Previous Shelter", @shelter.previous, class: "pure-button pure-button-primary") unless @shelter.previous.nil? %>
 <%= link_to("Next Shelter", @shelter.next, class: "pure-button pure-button-primary") unless @shelter.next.nil? %>
