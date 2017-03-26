@@ -25,7 +25,7 @@
           <%= state %>
         </div>
         <div class="table-cell pull-right">
-          <span class="post-category"><%= state_info[:average_weather][:high] %>&deg; / <%= state_info[:average_weather][:low] %>&deg;</span>
+          <span class="post-category">State average: <%= state_info[:average_weather][:high] %>&deg; / <%= state_info[:average_weather][:low] %>&deg;</span>
         </div>
       </div>
       <div id="<%= state.to_s.delete(' ') %>" class="hidden">
