@@ -1,7 +1,7 @@
 class HomeController < ApplicationController
 
   def index
-    cached_html_path = Rails.root.join('app', 'views', 'static', 'index.html')
+    cached_html_path = Rails.root.join('public', 'cached_pages', 'index.html')
     cached_html = Pathname(cached_html_path).exist? ? File.new(cached_html_path, 'r') : nil
     seconds_in_hour = 3600.0
     if (cached_html.nil? || (Time.now - cached_html.mtime).to_i / seconds_in_hour > 2)

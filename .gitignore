@@ -22,9 +22,6 @@
 
 .env
 /vendor/cache/*
-
-/app/views/static/*
-!/app/views/static/.gitkeep
-
+/public/cached_pages/*
 /public/cached_pages/shelters/*
 !/public/cached_pages/shelters/.gitkeep

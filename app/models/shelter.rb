@@ -15,8 +15,12 @@ class Shelter < ApplicationRecord
       Shelter.all.each do |shelter|
         shelter.update_weather
         shelter.update_hourly_weather
+        shelter_cache_path = "#{Rails.root}/public/cached_pages/shelters/#{shelter.id}.html"
+        File.delete(shelter_cache_path) if File.exists?(shelter_cache_path)
         sleep 2
       end
+      index_cache_path = "#{Rails.root}/public/cached_pages/index.html"
+      File.delete(index_cache_path) if File.exists?(index_cache_path)
     end
   end
 
