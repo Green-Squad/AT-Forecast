@@ -44,11 +44,14 @@ class Shelter < ApplicationRecord
     Weather.where(shelter: self).delete_all
 
     forecast = load_weather('daily')
+    latt = forecast['city']['coord']['lat']
+    long = forecast['city']['coord']['lon']
+    elevation = get_elevation(latt, long)
 
     forecast['list'].each do |weather|
       weather_date = DateTime.strptime("#{weather['dt']}",'%s')
-      high = weather['temp']['max']
-      low = weather ['temp']['min']
+      high = adjust_temp_for_elevation(weather['temp']['max'], elevation)
+      low = adjust_temp_for_elevation(weather['temp']['min'], elevation)
       description = weather['weather'][0]['description']
       wind_direction = weather['deg']
       wind_speed = weather['speed']
@@ -63,10 +66,13 @@ class Shelter < ApplicationRecord
     HourlyWeather.where(shelter: self).delete_all
 
     forecast = load_weather('hourly')
+    latt = forecast['city']['coord']['lat']
+    long = forecast['city']['coord']['lon']
+    elevation = get_elevation(latt, long)
 
     forecast['list'].each do |weather|
       date = DateTime.strptime("#{weather['dt']}",'%s')
-      temp = weather['main']['temp']
+      temp = adjust_temp_for_elevation(weather['main']['temp'], elevation)
       description = weather['weather'][0]['description']
       wind_direction = weather['wind']['deg']
       wind_speed = weather['wind']['speed']
@@ -75,6 +81,24 @@ class Shelter < ApplicationRecord
       HourlyWeather.create(date: date, temp: temp,
         description: description, wind: wind, shelter:self)
     end
+  end
+
+  def get_elevation(latt, long)
+    elevation = Elevation.where(latt: latt, long: long).first
+    unless (elevation.present?)
+      api_key = ENV['GOOGLE_MAPS_API_KEY']
+      request_url = "https://maps.googleapis.com/maps/api/elevation/json?locations=#{latt},#{long}&key=#{api_key}"
+      results = JSON.load(open(request_url))
+      elevation_result = results['results'].first['elevation'].round
+      elevation = Elevation.create(latt: latt, long: long, elevation: elevation_result)
+    end
+    elevation.elevation
+  end
+
+  def adjust_temp_for_elevation(temp, elevation)
+    temp_diff_per_1k_feet = 3.5
+    elevation_diff = self.elevation - elevation
+    temp - (elevation_diff / 1000.0 * temp_diff_per_1k_feet)
   end
 
 end

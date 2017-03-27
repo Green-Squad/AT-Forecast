@@ -1,0 +1,2 @@
+class Elevation < ApplicationRecord
+end

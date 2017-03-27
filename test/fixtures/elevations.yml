@@ -1,0 +1,11 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  long: 9.99
+  latt: 9.99
+  elevation: 1
+
+two:
+  long: 9.99
+  latt: 9.99
+  elevation: 1
