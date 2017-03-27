@@ -1,9 +1,11 @@
 class SheltersController < ApplicationController
   before_action :set_shelter, only: [:show]
+  caches_page :show
 
   # GET /shelters/1
   # GET /shelters/1.json
   def show
+    logger.debug "Hello #{@shelter.name}"
     @weather_days = Weatherable.show_shelter(@shelter)
   end
 
