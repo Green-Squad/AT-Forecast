@@ -1,0 +1,6 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} ^\/shelters\/(.*)$
+    RewriteCond %{DOCUMENT_ROOT}/cached_pages/shelters/%1.html -f
+    RewriteRule ^shelters\/(.*)$ cached_pages/shelters/%1.html 
+</IfModule>
