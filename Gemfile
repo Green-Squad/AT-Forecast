@@ -6,8 +6,11 @@ git_source(:github) do |repo_name|
 end
 
 gem 'actionpack-page_caching'
+gem 'activeadmin', '1.0.0.pre5'
 gem 'coffee-rails', '~> 4.2'
+gem 'devise'
 gem 'htmlcompressor'
+gem 'inherited_resources', '~> 1.7'
 gem 'jbuilder', '~> 2.5'
 gem 'pg'
 gem 'rails', '~> 5.0.1'

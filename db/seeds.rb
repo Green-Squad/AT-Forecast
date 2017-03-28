@@ -27,3 +27,4 @@ csv.each do |row|
     elevation: row['Elevation'], long: row['Long'], latt: row['Latt'],
     state: state)
 end
+AdminUser.create!(email: 'admin@example.com', password: 'password', password_confirmation: 'password')
