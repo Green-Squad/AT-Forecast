@@ -45,13 +45,11 @@ class Shelter < ApplicationRecord
   end
 
   def update_weather
-    Weather.where(shelter: self).delete_all
-
     forecast = load_weather('daily')
     latt = forecast['city']['coord']['lat']
     long = forecast['city']['coord']['lon']
     elevation = get_elevation(latt, long)
-
+    weather_array = []
     forecast['list'].each do |weather|
       weather_date = DateTime.strptime("#{weather['dt']}",'%s')
       high = adjust_temp_for_elevation(weather['temp']['max'], elevation)
@@ -61,19 +59,21 @@ class Shelter < ApplicationRecord
       wind_speed = weather['speed']
       wind = convert_wind(wind_speed, wind_direction)
 
-      Weather.create(weather_date: weather_date, high: high, low: low,
-        description: description, wind: wind, shelter:self)
+      weather_array << { weather_date: weather_date, high: high, low: low,
+        description: description, wind: wind, shelter:self }
+    end
+    if weather_array.any?
+      Weather.where(shelter: self).delete_all
+      Weather.create(weather_array)
     end
   end
 
   def update_hourly_weather
-    HourlyWeather.where(shelter: self).delete_all
-
     forecast = load_weather('hourly')
     latt = forecast['city']['coord']['lat']
     long = forecast['city']['coord']['lon']
     elevation = get_elevation(latt, long)
-
+    hourly_weather_array = []
     forecast['list'].each do |weather|
       date = DateTime.strptime("#{weather['dt']}",'%s')
       temp = adjust_temp_for_elevation(weather['main']['temp'], elevation)
@@ -82,8 +82,12 @@ class Shelter < ApplicationRecord
       wind_speed = weather['wind']['speed']
       wind = convert_wind(wind_speed, wind_direction)
 
-      HourlyWeather.create(date: date, temp: temp,
-        description: description, wind: wind, shelter:self)
+      hourly_weather_array << {date: date, temp: temp,
+        description: description, wind: wind, shelter:self}
+    end
+    if hourly_weather_array.any?
+      HourlyWeather.where(shelter: self).delete_all
+      HourlyWeather.create(hourly_weather_array)
     end
   end
 
