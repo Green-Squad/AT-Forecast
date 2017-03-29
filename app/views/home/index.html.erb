@@ -3,10 +3,11 @@
     The fast, free and <a href="https://github.com/Green-Squad/AT-Forecast">open source</a> solution for weather on the Appalachian Trail.
   </p>
 <% end %>
+
 <h2 class="content-subhead">Find Shelter by mile.</h2>
 <form id="mile-search-form" onsubmit="return nearestShelter();" action="#" accept-charset="UTF-8" method="post" class="pure-form pure-g">
   <div class="pure-u-5-6">
-    <input type="number" step="0.1" name="mileage" id="mileage" class="pure-u-1" placeholder="NOBO Mileage">
+    <input type="number" step="0.1" name="mileage" id="mileage" class="pure-u-1" placeholder="NOBO Mileage e.g. 630">
   </div>
   <div class="pure-u-1-6">
     <div class="pure-g fill-height">
@@ -15,6 +16,10 @@
     </div>
   </div>
 </form>
+
+<h2 class="content-subhead">Find Shelter by current location.</h2>
+
+<div class="pure-button pure-button-primary" id="gps-button">Find by GPS</div>
 
 <h2 class="content-subhead">Find Shelter by state.</h2>
 <% @states.each do |state, state_info| %>
@@ -55,7 +60,7 @@
   function nearestShelter() {
     var mileage = document.getElementById('mileage').value;
     if (mileage !== '') {
-      window.location.href = '/nearest_shelter/' + mileage;
+      window.location.href = '/nearest_shelter?nobo_mile=' + mileage;
     }
     return false;
   }
@@ -77,4 +82,36 @@
       nearestShelter();
     }
   });
+
+  var gpsButton = document.getElementById('gps-button');
+  gpsButton.addEventListener('click', function() {
+
+    var options = {
+      enableHighAccuracy: true,
+      timeout: 5000,
+      maximumAge: 0
+    };
+
+    function success(pos) { // success callback
+      var coords = [pos.coords.latitude, pos.coords.longitude];
+      goToPage(coords);
+    };
+
+    function goToPage(coords) {
+      window.location.href = '/nearest_shelter?coords=' + coords[0] + ',' + coords[1];
+    }
+
+    function error(err) { // error callback
+      console.warn('ERROR(' + err.code + '): ' + err.message);
+    };
+
+    navigator.geolocation.getCurrentPosition(success, error, options);
+  });
+
+
+
+
+
+
+
 </script>

@@ -24,9 +24,19 @@ class HomeController < ApplicationController
   end
 
   def nearest_shelter
-    @shelter = Shelter.order("ABS(mileage - #{ params[:mileage]})").first
-    @weather_days = Weatherable.show_shelter(@shelter)
-    render 'shelters/show'
+    if params[:nobo_mile].present?
+      @shelter = Shelter.order("ABS(mileage - #{params[:nobo_mile]})").first
+      @weather_days = Weatherable.show_shelter(@shelter)
+      render 'shelters/show'
+    elsif params[:coords].present?
+      coords = params[:coords].split(',')
+      @shelter = Shelter.find_by_nearest_coords(coords.first, coords.last)
+      @weather_days = Weatherable.show_shelter(@shelter)
+      render 'shelters/show'
+    else
+      redirect_to root_url
+    end
+
   end
 
 

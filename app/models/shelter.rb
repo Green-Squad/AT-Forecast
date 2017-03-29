@@ -1,4 +1,6 @@
 class Shelter < ApplicationRecord
+  require 'haversine'
+
   has_many :weathers
   belongs_to :state
 
@@ -8,6 +10,19 @@ class Shelter < ApplicationRecord
 
   def previous
     self.class.where("mileage < ?", mileage).last
+  end
+
+  def self.find_by_nearest_coords(latt, long)
+    smallest_distance = 9999999999999.0
+    smallest_shelter = nil
+    Shelter.all.each do |shelter|
+      distance = ::Haversine.spherical_distance([latt.to_f, long.to_f], [shelter.latt.to_f, shelter.long.to_f])
+      if (distance < smallest_distance)
+        smallest_distance = distance
+        smallest_shelter = shelter
+      end
+    end
+    smallest_shelter
   end
 
   def self.update_all
@@ -106,5 +121,4 @@ class Shelter < ApplicationRecord
     elevation_diff = self.elevation - elevation
     temp - (elevation_diff / 1000.0 * temp_diff_per_1k_feet)
   end
-
 end
