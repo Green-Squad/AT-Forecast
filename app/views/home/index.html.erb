@@ -85,7 +85,7 @@
 
   var gpsButton = document.getElementById('gps-button');
   gpsButton.addEventListener('click', function() {
-
+    gpsButton.innerHTML = 'Loading...';
     var options = {
       enableHighAccuracy: true,
       timeout: 5000,
@@ -103,6 +103,7 @@
 
     function error(err) { // error callback
       console.warn('ERROR(' + err.code + '): ' + err.message);
+      gpsButton.innerHTML = 'Error: ' + err.message;
     };
 
     navigator.geolocation.getCurrentPosition(success, error, options);
