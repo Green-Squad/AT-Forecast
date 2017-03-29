@@ -11,7 +11,7 @@ class HomeController < ApplicationController
       states.each do |state|
         state_info = {}
         state_info[:average_weather] = state.get_average_weather
-        state_info[:shelters] = Shelter.where(state: state)
+        state_info[:shelters] = Shelter.where(state: state).order(:mileage)
         @states[:"#{state.name}"] = state_info
       end
       rendered_html = render_to_string(template: 'home/index')
