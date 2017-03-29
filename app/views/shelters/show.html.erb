@@ -11,7 +11,10 @@
       </p>
     </section>
   <% end %>
-
+  <div class="top-next-previous">
+    <%= link_to("Previous Shelter", @shelter.previous, class: "pure-button pure-button-primary") unless @shelter.previous.nil? %>
+    <%= link_to("Next Shelter", @shelter.next, class: "pure-button pure-button-primary") unless @shelter.next.nil? %>
+  </div>
   <% if @weather_days.first.first.low < 35 %>
     <div class="alert alert-danger"><strong>Freeze Warning!</strong> Sleep with your water filter tonight to prevent it from freezing.</div>
   <% end %>
