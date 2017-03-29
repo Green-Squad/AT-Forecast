@@ -85,11 +85,11 @@
 
   var gpsButton = document.getElementById('gps-button');
   gpsButton.addEventListener('click', function() {
-    gpsButton.innerHTML = 'Loading...';
+    gpsButton.innerHTML = 'Finding your location';
     var options = {
-      enableHighAccuracy: false,
-      timeout: 15000,
-      maximumAge: 0
+      enableHighAccuracy: true,
+      timeout: 60000,
+      maximumAge: 10 * 60000
     };
 
     function success(pos) { // success callback
