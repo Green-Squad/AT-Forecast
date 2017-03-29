@@ -5,7 +5,6 @@ class SheltersController < ApplicationController
   # GET /shelters/1
   # GET /shelters/1.json
   def show
-    logger.debug "Hello #{@shelter.name}"
     @weather_days = Weatherable.show_shelter(@shelter)
   end
 
