@@ -19,12 +19,12 @@
 
   <div class="alert alert-warning">The temperatures for each shelter are adjusted based on the elevation. More details can be found on the <%= link_to("about page", "#{about_path}#adjusted-temp") %>.</div>
 
-  <% if @weather_days.first.first.low < 35 %>
+  <% if @weather_days.first[:daily].low < 35 %>
     <div class="alert alert-danger"><strong>Freeze Warning!</strong> Sleep with your water filter tonight to prevent it from freezing.</div>
   <% end %>
   <% @weather_days.each do |all_weather| %>
-    <% weather = all_weather.first %>
-    <% hourly_weather = all_weather.last %>
+    <% weather = all_weather[:daily] %>
+    <% hourly_weather = all_weather[:hourly] %>
     <div class="content-subhead">
       <div class="pure-g">
         <div class="pure-u-1 pure-u-md-2-3">
@@ -75,6 +75,6 @@
       <% end %>
       </table>
     <% end %>
-    <p>Data last updated <%= @weather_days.first.first.created_at.strftime("%A %B %-d, %Y at %l:%M %p") %>.</p>
+    <p>Data last updated <%= @weather_days.first[:daily].created_at.strftime("%A %B %-d, %Y at %l:%M %p") %>.</p>
 <%= link_to("Previous Shelter", @shelter.previous, class: "pure-button pure-button-primary") unless @shelter.previous.nil? %>
 <%= link_to("Next Shelter", @shelter.next, class: "pure-button pure-button-primary") unless @shelter.next.nil? %>
