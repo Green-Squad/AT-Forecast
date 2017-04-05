@@ -85,6 +85,7 @@ class Shelter < ApplicationRecord
     forecast = load_weather('hourly')
     latt = forecast['city']['coord']['lat']
     long = forecast['city']['coord']['lon']
+    logger.debug(latt.inspect + " / " + latt.class.name)
     elevation = get_elevation(latt, long)
     hourly_weather_array = []
     forecast['list'].each do |weather|
@@ -105,7 +106,7 @@ class Shelter < ApplicationRecord
   end
 
   def get_elevation(latt, long)
-    elevation = Elevation.where(latt: latt, long: long).first
+    elevation = Elevation.where(latt: latt.to_d, long: long.to_d).first
     unless (elevation.present?)
       api_key = ENV['GOOGLE_MAPS_API_KEY']
       request_url = "https://maps.googleapis.com/maps/api/elevation/json?locations=#{latt},#{long}&key=#{api_key}"
