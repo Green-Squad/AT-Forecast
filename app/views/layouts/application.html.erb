@@ -12,7 +12,23 @@
       <div class="sidebar pure-u-1 pure-u-md-1-4">
         <div class="header">
           <h1 class="brand-title"><%= link_to('AT Forecast', root_path) %></h1>
-          <%= yield :sidebar %>
+          <% if content_for?(:sidebar) %>
+            <%= yield(:sidebar) %>
+          <% else %>
+            <p class="brand-tagline">
+              The fast, free and <a href="https://github.com/Green-Squad/AT-Forecast">open source</a> solution for weather on the Appalachian Trail.
+            </p>
+          <% end %>
+          <nav class="nav">
+              <ul class="nav-list">
+                  <li class="nav-item">
+                      <%= link_to('About', about_path, class: 'pure-button') %>
+                  </li>
+                  <li class="nav-item">
+                      <%= link_to('GitHub', "https://github.com/Green-Squad/AT-Forecast", class: 'pure-button') %>
+                  </li>
+              </ul>
+          </nav>
         </div>
       </div>
       <div class="content pure-u-1 pure-u-md-3-4">

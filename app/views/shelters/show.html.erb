@@ -11,10 +11,14 @@
       </p>
     </section>
   <% end %>
+
   <div class="top-next-previous">
     <%= link_to("Previous Shelter", @shelter.previous, class: "pure-button pure-button-primary") unless @shelter.previous.nil? %>
     <%= link_to("Next Shelter", @shelter.next, class: "pure-button pure-button-primary") unless @shelter.next.nil? %>
   </div>
+
+  <div class="alert alert-warning">The temperatures for each shelter are adjusted based on the elevation. More details can be found on the <%= link_to("about page", "#{about_path}#adjusted-temp") %>.</div>
+
   <% if @weather_days.first.first.low < 35 %>
     <div class="alert alert-danger"><strong>Freeze Warning!</strong> Sleep with your water filter tonight to prevent it from freezing.</div>
   <% end %>

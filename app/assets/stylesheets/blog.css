@@ -81,8 +81,11 @@ h3 {
 }
 .nav-item a:hover,
 .nav-item a:focus {
-    border: 2px solid rgb(61, 146, 201);
+  /*  border: 2px solid rgb(61, 146, 201); */
     text-decoration: none;
+    border: 2px solid #fff;
+    background: #fff;
+    color: #2980b9;
 }
 
 .content-subhead {
