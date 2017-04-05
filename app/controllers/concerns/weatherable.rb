@@ -13,4 +13,18 @@ module Weatherable extend ActiveSupport::Concern
     weather_days
   end
 
+  def self.get_states
+    states = {}
+    states_collection = State.all
+
+    states_collection.each do |state|
+      state_info = {}
+      state_info[:average_weather] = state.get_average_weather
+      state_info[:shelters] = Shelter.where(state: state).order(:mileage)
+      states[:"#{state.name}"] = state_info
+    end
+
+    states
+  end
+
 end
