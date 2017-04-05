@@ -26,11 +26,25 @@ class Shelter < ApplicationRecord
   end
 
   def self.update_all
+    logger.debug("Runnng Shelter.update_all at #{Time.now}")
     Shelter.all.each do |shelter|
+      logger.debug("Start shelter.update_weather for #{shelter.id}")
       shelter.update_weather
+      logger.debug("End shelter.update_weather for #{shelter.id}")
+      logger.debug("Start shelter.update_hourly_weather for #{shelter.id}")
       shelter.update_hourly_weather
+      logger.debug("End shelter.update_hourly_weather for #{shelter.id}")
       shelter_cache_path = "#{Rails.root}/public/cached_pages/shelters/#{shelter.id}.html"
-      File.delete(shelter_cache_path) if File.exists?(shelter_cache_path)
+      if File.exists?(shelter_cache_path)
+        logger.debug("File exists at #{shelter_cache_path}")
+        begin
+          File.delete(shelter_cache_path)
+        rescue Exception => e
+          logger.debug ("Error. Could not delete #{shelter_cache_path}")
+          logger.debug e.message
+          logger.debug e.backtrace.inspect
+        end
+      end
       sleep 2
     end
     index_cache_path = "#{Rails.root}/public/cached_pages/index.html"
