@@ -26,7 +26,7 @@ class Shelter < ApplicationRecord
   end
 
   def self.update_all
-    logger.debug("Runnng Shelter.update_all at #{Time.now}")
+    logger.debug("Running Shelter.update_all at #{Time.now}")
     Shelter.all.each do |shelter|
       logger.debug("Start shelter.update_weather for #{shelter.id}")
       shelter.update_weather
@@ -61,7 +61,15 @@ class Shelter < ApplicationRecord
     api_key = '&appid=' + ENV['OPEN_WEATHER_MAP_API_KEY']
     units = '&units=imperial'
     request_url = base_url + "lat=#{self.latt}&lon=#{self.long}" + units + api_key
-    JSON.load(open(request_url))
+    begin
+      request = open(request_url)
+      JSON.load(request)
+    rescue Exception => e
+      logger.debug ("Error. Could not load request #{request_url}")
+      logger.debug e.message
+      logger.debug e.backtrace.inspect
+      nil
+    end
   end
 
   def convert_wind(speed_in_ms, degrees)
@@ -73,49 +81,53 @@ class Shelter < ApplicationRecord
 
   def update_weather
     forecast = load_weather('daily')
-    latt = forecast['city']['coord']['lat']
-    long = forecast['city']['coord']['lon']
-    elevation = get_elevation(latt, long)
-    weather_array = []
-    forecast['list'].each do |weather|
-      weather_date = DateTime.strptime("#{weather['dt']}",'%s')
-      high = adjust_temp_for_elevation(weather['temp']['max'], elevation)
-      low = adjust_temp_for_elevation(weather['temp']['min'], elevation)
-      description = weather['weather'][0]['description']
-      wind_direction = weather['deg']
-      wind_speed = weather['speed']
-      wind = convert_wind(wind_speed, wind_direction)
+    unless forecast.nil?
+      latt = forecast['city']['coord']['lat']
+      long = forecast['city']['coord']['lon']
+      elevation = get_elevation(latt, long)
+      weather_array = []
+      forecast['list'].each do |weather|
+        weather_date = DateTime.strptime("#{weather['dt']}",'%s')
+        high = adjust_temp_for_elevation(weather['temp']['max'], elevation)
+        low = adjust_temp_for_elevation(weather['temp']['min'], elevation)
+        description = weather['weather'][0]['description']
+        wind_direction = weather['deg']
+        wind_speed = weather['speed']
+        wind = convert_wind(wind_speed, wind_direction)
 
-      weather_array << { weather_date: weather_date, high: high, low: low,
-        description: description, wind: wind, shelter:self }
-    end
-    if weather_array.any?
-      Weather.where(shelter: self).delete_all
-      Weather.create(weather_array)
+        weather_array << { weather_date: weather_date, high: high, low: low,
+          description: description, wind: wind, shelter:self }
+      end
+      if weather_array.any?
+        Weather.where(shelter: self).delete_all
+        Weather.create(weather_array)
+      end
     end
   end
 
   def update_hourly_weather
     forecast = load_weather('hourly')
-    latt = forecast['city']['coord']['lat']
-    long = forecast['city']['coord']['lon']
-    logger.debug(latt.inspect + " / " + latt.class.name)
-    elevation = get_elevation(latt, long)
-    hourly_weather_array = []
-    forecast['list'].each do |weather|
-      date = DateTime.strptime("#{weather['dt']}",'%s')
-      temp = adjust_temp_for_elevation(weather['main']['temp'], elevation)
-      description = weather['weather'][0]['description']
-      wind_direction = weather['wind']['deg']
-      wind_speed = weather['wind']['speed']
-      wind = convert_wind(wind_speed, wind_direction)
+    unless forecast.nil?
+      latt = forecast['city']['coord']['lat']
+      long = forecast['city']['coord']['lon']
+      logger.debug(latt.inspect + " / " + latt.class.name)
+      elevation = get_elevation(latt, long)
+      hourly_weather_array = []
+      forecast['list'].each do |weather|
+        date = DateTime.strptime("#{weather['dt']}",'%s')
+        temp = adjust_temp_for_elevation(weather['main']['temp'], elevation)
+        description = weather['weather'][0]['description']
+        wind_direction = weather['wind']['deg']
+        wind_speed = weather['wind']['speed']
+        wind = convert_wind(wind_speed, wind_direction)
 
-      hourly_weather_array << {date: date, temp: temp,
-        description: description, wind: wind, shelter:self}
-    end
-    if hourly_weather_array.any?
-      HourlyWeather.where(shelter: self).delete_all
-      HourlyWeather.create(hourly_weather_array)
+        hourly_weather_array << {date: date, temp: temp,
+          description: description, wind: wind, shelter:self}
+      end
+      if hourly_weather_array.any?
+        HourlyWeather.where(shelter: self).delete_all
+        HourlyWeather.create(hourly_weather_array)
+      end
     end
   end
 
