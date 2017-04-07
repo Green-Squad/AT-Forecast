@@ -59,8 +59,7 @@ class Shelter < ApplicationRecord
       base_url += '?'
     end
     api_key = '&appid=' + ENV['OPEN_WEATHER_MAP_API_KEY']
-    units = '&units=imperial'
-    request_url = base_url + "lat=#{self.latt}&lon=#{self.long}" + units + api_key
+    request_url = base_url + "lat=#{self.latt}&lon=#{self.long}" + api_key
     begin
       request = open(request_url)
       JSON.load(request)
@@ -79,6 +78,10 @@ class Shelter < ApplicationRecord
     "#{speed_in_mph} mph #{directions[direction_index]}"
   end
 
+  def convert_temp(kelvin)
+     kelvin * 9.0/5.0 - 459.67
+  end
+
   def update_weather
     forecast = load_weather('daily')
     unless forecast.nil?
@@ -88,8 +91,10 @@ class Shelter < ApplicationRecord
       weather_array = []
       forecast['list'].each do |weather|
         weather_date = DateTime.strptime("#{weather['dt']}",'%s')
-        high = adjust_temp_for_elevation(weather['temp']['max'], elevation)
-        low = adjust_temp_for_elevation(weather['temp']['min'], elevation)
+        high_f = convert_temp(weather['temp']['max'])
+        high = adjust_temp_for_elevation(high_f, elevation)
+        low_f = convert_temp(weather['temp']['min'])
+        low = adjust_temp_for_elevation(low_f, elevation)
         description = weather['weather'][0]['description']
         wind_direction = weather['deg']
         wind_speed = weather['speed']
@@ -115,7 +120,8 @@ class Shelter < ApplicationRecord
       hourly_weather_array = []
       forecast['list'].each do |weather|
         date = DateTime.strptime("#{weather['dt']}",'%s')
-        temp = adjust_temp_for_elevation(weather['main']['temp'], elevation)
+        temp_f = convert_temp(weather['main']['temp'])
+        temp = adjust_temp_for_elevation(temp_f, elevation)
         description = weather['weather'][0]['description']
         wind_direction = weather['wind']['deg']
         wind_speed = weather['wind']['speed']
