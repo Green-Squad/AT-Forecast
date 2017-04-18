@@ -21,6 +21,7 @@ module Weatherable extend ActiveSupport::Concern
       state_info = {}
       state_info[:average_weather] = state.get_average_weather
       state_info[:shelters] = Shelter.where(state: state).order(:mileage)
+      state_info[:id] = state.id
       states[:"#{state.name}"] = state_info
     end
 

@@ -1,4 +1,5 @@
 json.array! @states do |state, state_info|
+  json.state_id state_info[:id]
   json.name state
   json.average_high state_info[:average_weather][:high]
   json.average_low state_info[:average_weather][:low]
