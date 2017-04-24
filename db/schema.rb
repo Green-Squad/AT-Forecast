@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170328170329) do
+ActiveRecord::Schema.define(version: 20170424184155) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -63,6 +63,12 @@ ActiveRecord::Schema.define(version: 20170328170329) do
     t.datetime "updated_at",  null: false
     t.string   "wind"
     t.index ["shelter_id"], name: "index_hourly_weathers_on_shelter_id", using: :btree
+  end
+
+  create_table "keys", force: :cascade do |t|
+    t.string   "key"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "shelters", force: :cascade do |t|

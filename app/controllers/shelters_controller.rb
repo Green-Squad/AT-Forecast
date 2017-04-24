@@ -5,7 +5,19 @@ class SheltersController < ApplicationController
   # GET /shelters/1
   # GET /shelters/1.json
   def show
-    @weather_days = Weatherable.show_shelter(@shelter)
+    respond_to do |format|
+      format.html {
+        @weather_days = Weatherable.show_shelter(@shelter)
+      }
+      format.json {
+        if (api_auth(params[:api_key]))
+          @weather_days = Weatherable.show_shelter(@shelter)
+        else
+          self.status = :unauthorized
+          self.response_body = { error: 'Access denied' }.to_json
+        end
+      }
+    end
   end
 
   private

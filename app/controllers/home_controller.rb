@@ -17,9 +17,14 @@ class HomeController < ApplicationController
         render html: cached_html.read.html_safe
       }
       format.json {
-        @include_shelters = params[:include_shelters] == 'true' ? true : false
-        @states = Weatherable.get_states
-        render template: 'home/index.json'
+        if (api_auth(params[:api_key]))
+          @include_shelters = params[:include_shelters] == 'true' ? true : false
+          @states = Weatherable.get_states
+          render template: 'home/index.json'
+        else
+          self.status = :unauthorized
+          self.response_body = { error: 'Access denied' }.to_json
+        end
       }
     end
   end
