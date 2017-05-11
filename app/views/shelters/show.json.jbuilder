@@ -1,5 +1,5 @@
 if @dist_miles
-  json.bulk_weather @bulk_shelters do |shelter|
+  json.array! @bulk_shelters do |shelter|
     json.shelter_id shelter["id"]
     json.name shelter["name"]
     json.mileage shelter["mileage"]
