@@ -11,7 +11,24 @@ class SheltersController < ApplicationController
       }
       format.json {
         if (api_auth(params[:api_key]))
-          @weather_days = Weatherable.show_shelter(@shelter)
+          if (params[:dist_miles])
+            @dist_miles = params[:dist_miles].present?
+            @bulk_shelters = []
+
+            shelter_mile = @shelter.mileage
+            distance = params[:dist_miles].to_f
+
+            sorted_shelters = Shelter.where("mileage <= ? AND mileage >= ?", shelter_mile + distance, shelter_mile - distance)
+            sorted_shelters.each do |shelter|
+              shelter_data = shelter.attributes
+              shelter_data[:daily_weather] = Weatherable.show_shelter(shelter);
+              @bulk_shelters << shelter_data
+            end
+
+            @bulk_shelters
+          else
+            @weather_days = Weatherable.show_shelter(@shelter)
+          end
         else
           self.status = :unauthorized
           self.response_body = { error: 'Access denied' }.to_json
