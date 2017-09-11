@@ -4,6 +4,8 @@ class Shelter < ApplicationRecord
   has_many :weathers
   belongs_to :state
 
+  attr_accessor :daily_weather
+
   def next
     self.class.where("mileage > ?", mileage).first
   end
