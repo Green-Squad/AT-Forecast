@@ -94,9 +94,9 @@ class Shelter < ApplicationRecord
       forecast['list'].each do |weather|
         weather_date = DateTime.strptime("#{weather['dt']}",'%s')
         high_f = convert_temp(weather['temp']['max'])
-        high = adjust_temp_for_elevation(high_f, elevation)
+        high = high_f
         low_f = convert_temp(weather['temp']['min'])
-        low = adjust_temp_for_elevation(low_f, elevation)
+        low = low_f
         description = weather['weather'][0]['description']
         wind_direction = weather['deg']
         wind_speed = weather['speed']
@@ -117,13 +117,13 @@ class Shelter < ApplicationRecord
     unless forecast.nil?
       latt = forecast['city']['coord']['lat']
       long = forecast['city']['coord']['lon']
-      logger.debug(latt.inspect + " / " + latt.class.name)
+      # logger.debug(latt.inspect + " / " + latt.class.name)
       elevation = get_elevation(latt, long)
       hourly_weather_array = []
       forecast['list'].each do |weather|
         date = DateTime.strptime("#{weather['dt']}",'%s')
         temp_f = convert_temp(weather['main']['temp'])
-        temp = adjust_temp_for_elevation(temp_f, elevation)
+        temp = temp_f
         description = weather['weather'][0]['description']
         wind_direction = weather['wind']['deg']
         wind_speed = weather['wind']['speed']
@@ -151,6 +151,7 @@ class Shelter < ApplicationRecord
     elevation.elevation
   end
 
+  # Unused for now. Openweathermap's temps seem lower than other sources.
   def adjust_temp_for_elevation(temp, elevation)
     temp_diff_per_1k_feet = 3.5
     elevation_diff = self.elevation - elevation
