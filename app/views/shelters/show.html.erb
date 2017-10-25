@@ -17,7 +17,7 @@
     <%= link_to("Next Shelter", @shelter.next, class: "pure-button pure-button-primary") unless @shelter.next.nil? %>
   </div>
   <a href="https://goo.gl/uaRHtn" class="alert alert-info" style="display: block;"><strong>Android app available.</strong> Download from the Google Play Store.</a>
-  <div class="alert alert-warning">The temperatures for each shelter are adjusted based on the elevation. More details can be found on the <%= link_to("about page", "#{about_path}#adjusted-temp") %>.</div>
+  <div class="alert alert-warning">Be mindful that temperatures will be lower at increased elevation. More details can be found on the <%= link_to("about page", "#{about_path}#adjusted-temp") %>.</div>
 
   <% if @weather_days.first[:daily].low < 35 %>
     <div class="alert alert-danger"><strong>Freeze Warning!</strong> Sleep with your water filter tonight to prevent it from freezing.</div>
