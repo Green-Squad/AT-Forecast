@@ -6,7 +6,7 @@ json.array! @states do |state, state_info|
   if @include_shelters
     json.shelters state_info[:shelters] do |shelter|
       json.shelter_id shelter[:id]
-      json.extract! shelter, :name, :mileage, :latt, :long
+      json.extract! shelter, :name, :mileage, :elevation, :latt, :long
     end
   end
 end
