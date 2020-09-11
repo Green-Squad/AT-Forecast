@@ -1,6 +1,7 @@
 json.array! @shelters do |shelter|
   json.shelter_id shelter.id
   json.extract! shelter, :name, :mileage, :elevation
+  json.shelter get_southbound_mileage
   json.daily_weather shelter.daily_weather do |weather_day|
     json.daily_weather_id weather_day[:daily][:id]
     json.extract! weather_day[:daily], :weather_date, :high, :low, :description, :wind, :shelter_id
