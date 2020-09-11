@@ -160,6 +160,6 @@ class Shelter < ApplicationRecord
 
   def get_southbound_mileage
     total_length = 2193
-    (self.mileage - total_length) * -1
+    ((self.mileage - total_length) * -1).to_f
   end
 end
