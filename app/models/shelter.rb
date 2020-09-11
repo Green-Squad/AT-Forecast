@@ -7,11 +7,11 @@ class Shelter < ApplicationRecord
   attr_accessor :daily_weather
 
   def next
-    self.class.where("mileage > ?", mileage).first
+    self.class.where("mileage > ?", mileage).order(:mileage).first
   end
 
   def previous
-    self.class.where("mileage < ?", mileage).last
+    self.class.where("mileage < ?", mileage).order(:mileage).last
   end
 
   def self.find_by_nearest_coords(latt, long)
