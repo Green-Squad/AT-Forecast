@@ -158,8 +158,8 @@ class Shelter < ApplicationRecord
     temp - (elevation_diff / 1000.0 * temp_diff_per_1k_feet)
   end
 
-  def get_southbound_mileage(mileage)
+  def get_southbound_mileage
     total_length = 2193
-    (mileage - total_length) * -1
+    (self.mileage - total_length) * -1
   end
 end
