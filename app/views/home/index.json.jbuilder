@@ -7,6 +7,7 @@ json.array! @states do |state, state_info|
     json.shelters state_info[:shelters] do |shelter|
       json.shelter_id shelter[:id]
       json.extract! shelter, :name, :mileage, :elevation, :latt, :long
+      json.southbound_mileage shelter.get_southbound_mileage
     end
   end
 end
