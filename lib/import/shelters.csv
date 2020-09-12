@@ -238,7 +238,7 @@ Id,Name,Mileage,Elevation,Latt,Long,State
 237,Ethan Pond Campsite Shelter,1844.7,2860,44.17715,-71.42659,NH
 238,Mizpah Spring Hut,1854,3800,44.2193,-71.36956,NH
 239,Lake of the Clouds Hut,1858.7,5012,44.2589,-71.31879,NH
-281,Hermit Lake Shelters,1860.1,3875,44.26109,-71.2863,NH
+280,Hermit Lake Shelters,1860.1,3875,44.26109,-71.2863,NH
 240,The RMS Perch Shelter,1864.3,4313,44.32446,-71.31048,NH
 241,Madison Spring Hut,1865.8,4825,44.32779,-71.28318,NH
 242,Osgood Tent Site,1868.4,2554,44.30859,-71.25512,NH
@@ -275,7 +275,7 @@ Id,Name,Mileage,Elevation,Latt,Long,State
 273,East Branch Lean-to,2125.2,1225,45.59676,-69.19816,ME
 274,Cooper Brook Falls Lean-to,2133.3,880,45.6405,-69.0874,ME
 275,Potaywadjo Spring Lean-to,2144.7,710,45.70653,-69.00738,ME
-283,Nahmakanta Stream Lean-to,2149,512,45.73416,-69.046854,ME
+281,Nahmakanta Stream Lean-to,2149,512,45.73416,-69.046854,ME
 276,Wadleigh Stream Lean-to,2154.8,685,45.74702,-69.14447,ME
 277,Rainbow Stream Lean-to,2162.9,1020,45.79906,-69.17041,ME
 278,Hurd Brook Lean-to,2174.4,715,45.81852,-69.01847,ME
