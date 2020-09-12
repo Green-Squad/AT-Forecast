@@ -1,5 +1,6 @@
 class Shelter < ApplicationRecord
   require 'haversine'
+  require 'csv'
 
   has_many :weathers
   belongs_to :state
@@ -161,5 +162,36 @@ class Shelter < ApplicationRecord
   def get_southbound_mileage
     total_length = 2193
     ((self.mileage - total_length) * -1).to_f
+  end
+
+  # Used for updating shelters only, not creating new shelters.
+  def self.import
+    logger.debug("Starting import.")
+    shelters_csv = File.read(Rails.root.join('lib', 'import', 'shelters.csv'))
+    csv = CSV.parse(shelters_csv, headers: true)
+    csv.each do |row|
+      shelter = Shelter.find_by(id: row['Id'])
+      if (shelter != nil) {
+        state = State.find_by(abbreviation: row['State'])
+        shelter.update(name: row['Name'], mileage: row['Mileage'],
+          elevation: row['Elevation'], long: row['Long'], latt: row['Latt'],
+          state: state)
+
+        shelter_cache_path = "#{Rails.root}/public/cached_pages/shelters/#{shelter.id}.html"
+        if File.exists?(shelter_cache_path)
+          logger.debug("File exists at #{shelter_cache_path}")
+          begin
+            File.delete(shelter_cache_path)
+          rescue Exception => e
+            logger.debug("Error. Could not delete #{shelter_cache_path}")
+            logger.debug e.message
+            logger.debug e.backtrace.inspect
+          end
+        end
+      }
+    end
+
+    index_cache_path = "#{Rails.root}/public/cached_pages/index.html"
+    File.delete(index_cache_path) if File.exists?(index_cache_path)
   end
 end
