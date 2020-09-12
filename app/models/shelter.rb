@@ -171,7 +171,7 @@ class Shelter < ApplicationRecord
     csv = CSV.parse(shelters_csv, headers: true)
     csv.each do |row|
       shelter = Shelter.find_by(id: row['Id'])
-      if (shelter != nil) {
+      if (shelter != nil)
         state = State.find_by(abbreviation: row['State'])
         shelter.update(name: row['Name'], mileage: row['Mileage'],
           elevation: row['Elevation'], long: row['Long'], latt: row['Latt'],
@@ -188,7 +188,7 @@ class Shelter < ApplicationRecord
             logger.debug e.backtrace.inspect
           end
         end
-      }
+      end
     end
 
     index_cache_path = "#{Rails.root}/public/cached_pages/index.html"
