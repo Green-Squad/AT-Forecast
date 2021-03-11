@@ -91,7 +91,7 @@ class Shelter < ApplicationRecord
     unless forecast.nil?
       latt = forecast['city']['coord']['lat']
       long = forecast['city']['coord']['lon']
-      elevation = get_elevation(latt, long)
+      #elevation = get_elevation(latt, long)
       weather_array = []
       forecast['list'].each do |weather|
         weather_date = DateTime.strptime("#{weather['dt']}",'%s')
@@ -120,7 +120,7 @@ class Shelter < ApplicationRecord
       latt = forecast['city']['coord']['lat']
       long = forecast['city']['coord']['lon']
       # logger.debug(latt.inspect + " / " + latt.class.name)
-      elevation = get_elevation(latt, long)
+      #elevation = get_elevation(latt, long)
       hourly_weather_array = []
       forecast['list'].each do |weather|
         date = DateTime.strptime("#{weather['dt']}",'%s')
