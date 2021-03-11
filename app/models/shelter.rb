@@ -29,6 +29,7 @@ class Shelter < ApplicationRecord
   end
 
   def self.update_all
+    # IT'S PROBABLY GOOGLE API IF IT'S BROKEN
     logger.debug("Running Shelter.update_all at #{Time.now}")
     Shelter.all.each do |shelter|
       logger.debug("Start shelter.update_weather for #{shelter.id}")
@@ -146,16 +147,15 @@ class Shelter < ApplicationRecord
       api_key = ENV['GOOGLE_MAPS_API_KEY']
       request_url = "https://maps.googleapis.com/maps/api/elevation/json?locations=#{latt},#{long}&key=#{api_key}"
 
-      begin
         request = open(request_url)
+        if (request['error_message'])
+            logger.debug ("Google fucked us again.")
+            logger.debug request['error_message']
+        end
+
         results = JSON.load(request)
         elevation_result = results['results'].first['elevation'].round
         elevation = Elevation.create(latt: latt, long: long, elevation: elevation_result)
-      rescue Exception => e
-        logger.debug ("Error. Could not retreive elevation data from google.")
-        logger.debug e.message
-        logger.debug e.backtrace.inspect
-      end      
     end
     elevation.elevation
   end
