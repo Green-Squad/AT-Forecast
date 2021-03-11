@@ -1,6 +1,7 @@
 class Shelter < ApplicationRecord
   require 'haversine'
   require 'csv'
+  require 'open-uri'
 
   has_many :weathers
   belongs_to :state
