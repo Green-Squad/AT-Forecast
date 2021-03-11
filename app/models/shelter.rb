@@ -1,7 +1,6 @@
 class Shelter < ApplicationRecord
   require 'haversine'
   require 'csv'
-  require 'open-uri'
 
   has_many :weathers
   belongs_to :state
@@ -146,9 +145,17 @@ class Shelter < ApplicationRecord
     unless (elevation.present?)
       api_key = ENV['GOOGLE_MAPS_API_KEY']
       request_url = "https://maps.googleapis.com/maps/api/elevation/json?locations=#{latt},#{long}&key=#{api_key}"
-      results = JSON.load(open(request_url))
-      elevation_result = results['results'].first['elevation'].round
-      elevation = Elevation.create(latt: latt, long: long, elevation: elevation_result)
+
+      begin
+        request = open(request_url)
+        results = JSON.load(request)
+        elevation_result = results['results'].first['elevation'].round
+        elevation = Elevation.create(latt: latt, long: long, elevation: elevation_result)
+      rescue Exception => e
+        logger.debug ("Error. Could not retreive elevation data from google.")
+        logger.debug e.message
+        logger.debug e.backtrace.inspect
+      end      
     end
     elevation.elevation
   end
