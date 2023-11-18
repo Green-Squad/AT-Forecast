@@ -7,6 +7,9 @@ WORKDIR /usr/src/app
 # Copy the Gemfile and Gemfile.lock into the container
 COPY Gemfile Gemfile.lock ./
 
+# Not sure why we need to do this on Google Cloud
+RUN gem install bundler -v '1.14.6'
+
 # Install any needed gems specified in Gemfile
 RUN bundle install
 
