@@ -1,6 +1,7 @@
 class Shelter < ApplicationRecord
   require 'haversine'
   require 'csv'
+  require 'open-uri'
 
   has_many :weathers
   belongs_to :state
@@ -56,7 +57,7 @@ class Shelter < ApplicationRecord
   end
 
   def load_weather(type)
-    base_url = 'http://api.openweathermap.org/data/2.5/forecast'
+    base_url = 'https://api.openweathermap.org/data/2.5/forecast'
     if type == 'daily'
       base_url += '/daily?'
     elsif type == 'hourly'
@@ -65,7 +66,7 @@ class Shelter < ApplicationRecord
     api_key = '&appid=' + ENV['OPEN_WEATHER_MAP_API_KEY']
     request_url = base_url + "lat=#{self.latt}&lon=#{self.long}" + api_key
     begin
-      request = open(request_url)
+      request = URI.open(request_url)
       JSON.load(request)
     rescue Exception => e
       logger.debug ("Error. Could not load request #{request_url}")
@@ -147,7 +148,7 @@ class Shelter < ApplicationRecord
       api_key = ENV['GOOGLE_MAPS_API_KEY']
       request_url = "https://maps.googleapis.com/maps/api/elevation/json?locations=#{latt},#{long}&key=#{api_key}"
 
-        request = open(request_url)
+        request = URI.open(request_url)
         if (request['error_message'])
             logger.debug ("Google fucked us again.")
             logger.debug request['error_message']

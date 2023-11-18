@@ -1,5 +1,5 @@
 # Use an official Ruby image as a parent image
-FROM ruby:2.4
+FROM ruby:2.7
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
