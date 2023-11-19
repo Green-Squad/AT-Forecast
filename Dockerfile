@@ -19,5 +19,10 @@ COPY . .
 # Add metadata to the image to describe which port the container is listening on at runtime
 EXPOSE 3000
 
+# Precompile assets
+# Set RAILS_ENV and SECRET_KEY_BASE as these might be required for asset compilation
+ENV RAILS_ENV=production SECRET_KEY_BASE=temporary_key
+RUN rails assets:precompile
+
 # Start the main process (in this case, Puma server)
 CMD ["rails", "server", "-b", "0.0.0.0"]

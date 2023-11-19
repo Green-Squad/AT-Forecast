@@ -1,7 +1,6 @@
 default: &default
   adapter: postgresql
   encoding: unicode
-  host: localhost
   username: <%= ENV['FASTATWEATHER_DATABASE_USERNAME'] %>
   password: <%= ENV['FASTATWEATHER_DATABASE_PASSWORD'] %>
   # For details on connection pooling, see rails configuration guide
@@ -19,4 +18,5 @@ test:
 
 production:
   <<: *default
+  host: <%= ENV['FASTATWEATHER_DATABASE_HOST'] %>
   database: fast_at_weather_production
