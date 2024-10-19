@@ -6,4 +6,5 @@ We welcome any pull requests or suggestions that you might want to see implement
 
 Data sources we use:  
 - Shelter Data: https://www.whiteblaze.net/forum/shelters-2016.php  
-- Weather Data: https://openweathermap.org/api  
+- Weather Data: https://openweathermap.org/api
+  
