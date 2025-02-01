@@ -37,10 +37,14 @@
       </div>
     </div>
     <% if Rails.env.production? %>
-    <script src="https://cdn.jsdelivr.net/ga-lite/latest/ga-lite.min.js" async></script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-C5G0041GWN"></script>
     <script>
-      var galite = galite || {};
-      galite.UA = 'UA-50909901-10';
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    
+      gtag('config', 'G-C5G0041GWN');
     </script>
   <% end %>
   </body>
