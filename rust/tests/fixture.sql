@@ -21,7 +21,7 @@ INSERT INTO weathers VALUES
  (4,'2020-01-01 17:00:00',50,40,'scattered clouds',3,'2020-01-01','2020-01-01','5 mph W'),
  (5,'2020-01-01 17:00:00',-3,-4,'fog',4,'2020-01-01','2020-01-01','5 mph W');
 INSERT INTO hourly_weathers VALUES
- (1,'2020-01-01 14:00:00',5,'clear sky',2,'2020-01-01','2020-01-01','3 mph N'),
+ (1,'2020-01-01 14:00:00',5,'clear sky',2,'2020-01-01','2020-01-01',NULL),
  (2,'2020-01-01 17:00:00',10,'clear sky',2,'2020-01-01','2020-01-01','3 mph N'),
  -- Eastern day boundary: 04:59 UTC still belongs to January 1; 05:00 belongs to January 2.
  (3,'2020-01-02 04:59:00',1,'mist',2,'2020-01-01','2020-01-01','1 mph N'),

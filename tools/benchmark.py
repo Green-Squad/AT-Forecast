@@ -45,12 +45,11 @@ results = []
 for route in routes:
     if '{API_KEY}' in route and not key:
         p.error('Set BENCH_API_KEY for authenticated routes; the key is never printed')
-    for _ in range(a.warmup):
-        one(route)
-    begin = time.perf_counter()
     with concurrent.futures.ThreadPoolExecutor(max_workers=a.concurrency) as executor:
+        list(executor.map(one, [route] * a.warmup))
+        begin = time.perf_counter()
         samples = list(executor.map(one, [route] * a.requests))
-    wall = time.perf_counter() - begin
+        wall = time.perf_counter() - begin
     lat = [s[0] for s in samples]
     counts = [s[1] for s in samples if s[1] is not None]
     db = [s[2] for s in samples if s[2] is not None]

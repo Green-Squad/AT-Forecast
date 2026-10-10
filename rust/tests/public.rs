@@ -53,9 +53,9 @@ async fn public_routes_preserve_unbatched_queries() {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(count(&h), 5); // 1 states + 2 averages + 2 shelters
     assert!(html.contains("State average: 26&deg; / 12&deg;")); // (10+20+50)/3 and (-1-2+40)/3; excludes 2100
-    assert!(html.contains("Middle &amp; &lt;Shelter&gt;"));
+    assert!(html.contains("Middle &#38; &#60;Shelter&#62;"));
     assert!(html.contains("/shelters/2"));
-    assert!(html.find("Start Shelter").unwrap() < html.find("Middle &amp;").unwrap());
+    assert!(html.find("Start Shelter").unwrap() < html.find("Middle &#38;").unwrap());
     let (status, h, html) = request(&app, "/shelters/2").await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(count(&h), 8); // shelter + daily + (2 + 1 + 1) hourly + 2 neighbors
@@ -73,6 +73,7 @@ async fn public_routes_preserve_unbatched_queries() {
     let json: Value = serde_json::from_str(&body).unwrap();
     assert_eq!(json[0]["mileage"], "110.5");
     assert_eq!(json[0]["southbound_mileage"], 2082.5);
+    assert!(json[0]["daily_weather"][0]["hourly_weather"][0]["wind"].is_null());
     assert_eq!(json[0]["daily_weather"].as_array().unwrap().len(), 3);
     assert_eq!(
         json[0]["daily_weather"][0]["hourly_weather"]
@@ -175,6 +176,11 @@ async fn public_routes_preserve_unbatched_queries() {
     assert_eq!(count(&h), 0);
     assert_eq!(h["x-page-cache"], "hit");
     assert_eq!(first, second);
+    std::fs::File::open(cached.config.cache_dir.join("index.html"))
+        .unwrap()
+        .set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(7202))
+        .unwrap();
+    assert_eq!(count(&request(&cached, "/").await.1), 5);
     // Shelter cache writes do not create a new serving cache. Every request still queries PostgreSQL.
     request(&cached, "/shelters/2").await;
     assert_eq!(count(&request(&cached, "/shelters/2").await.1), 8);

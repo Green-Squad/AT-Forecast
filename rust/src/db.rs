@@ -62,7 +62,7 @@ pub struct Daily {
     pub high: i32,
     pub low: i32,
     pub description: String,
-    pub wind: String,
+    pub wind: Option<String>,
     pub shelter_id: i32,
     pub created_at: NaiveDateTime,
 }
@@ -72,7 +72,7 @@ pub struct Hourly {
     pub date: NaiveDateTime,
     pub temp: i32,
     pub description: String,
-    pub wind: String,
+    pub wind: Option<String>,
 }
 pub struct DayView {
     pub daily: Daily,
@@ -80,6 +80,11 @@ pub struct DayView {
     pub date_label: String,
     pub category: &'static str,
     pub times: Vec<String>,
+}
+impl Hourly {
+    pub fn wind_label(&self) -> &str {
+        self.wind.as_deref().unwrap_or("")
+    }
 }
 impl DayView {
     pub fn json(&self, cfg: &Config) -> Value {
