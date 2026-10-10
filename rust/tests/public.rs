@@ -99,8 +99,7 @@ async fn public_routes_preserve_responses_with_bounded_queries() {
         .collect();
     assert_eq!(ids.len(), 2);
     assert!(ids.contains(&2) && ids.contains(&3) && !ids.contains(&1));
-    let (_, h, body) =
-        request(&app, "/shelters/1.json?api_key=fixture-key&dist_miles=130").await;
+    let (_, h, body) = request(&app, "/shelters/1.json?api_key=fixture-key&dist_miles=130").await;
     assert_eq!(count(&h), 5); // Five shelters still need only two forecast statements.
     let json: Value = serde_json::from_str(&body).unwrap();
     assert_eq!(json.as_array().unwrap().len(), 5);
@@ -109,10 +108,12 @@ async fn public_routes_preserve_responses_with_bounded_queries() {
             assert!(shelter["daily_weather"].as_array().unwrap().is_empty());
         }
     }
-    let (_, h, body) =
-        request(&app, "/shelters/1.json?api_key=fixture-key&dist_miles=0").await;
+    let (_, h, body) = request(&app, "/shelters/1.json?api_key=fixture-key&dist_miles=0").await;
     assert_eq!(count(&h), 3); // Empty range skips both forecast queries.
-    assert_eq!(serde_json::from_str::<Value>(&body).unwrap(), serde_json::json!([]));
+    assert_eq!(
+        serde_json::from_str::<Value>(&body).unwrap(),
+        serde_json::json!([])
+    );
     let (_, h, body) = request(&app, "/index.json?api_key=fixture-key").await;
     assert_eq!(count(&h), 3);
     let json: Value = serde_json::from_str(&body).unwrap();

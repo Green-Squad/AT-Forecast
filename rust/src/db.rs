@@ -401,7 +401,6 @@ impl Db {
         }
         Ok(out)
     }
-
 }
 fn day_bounds(date: NaiveDateTime, cfg: &Config) -> (NaiveDateTime, NaiveDateTime) {
     let shown = displayed(date, cfg);
