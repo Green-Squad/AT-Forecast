@@ -163,9 +163,7 @@ pub struct Db {
     neighbors: HashMap<(i32, bool), Option<Shelter>>,
 }
 macro_rules! rows {
-    ($db:expr,$query:expr) => {{
-        $db.run($query).await?
-    }};
+    ($db:expr,$query:expr) => {{ $db.run($query).await? }};
 }
 impl Db {
     pub fn new(pool: PgPool, timeout: Duration) -> Self {
