@@ -127,6 +127,20 @@ async fn public_routes_preserve_unbatched_queries() {
         request(&app, "/shelters/999999.json").await.0,
         StatusCode::NOT_FOUND
     );
+    let missing: Value =
+        serde_json::from_str(&request(&app, "/shelters/999999.json").await.2).unwrap();
+    assert_eq!(missing["status"], 404);
+    let response = router(app.clone())
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/shelters/2")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
     assert_eq!(
         request(&app, "/shelters/5").await.0,
         StatusCode::SERVICE_UNAVAILABLE

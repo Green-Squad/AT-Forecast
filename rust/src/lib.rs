@@ -144,7 +144,9 @@ pub fn router(app: App) -> Router {
             "/apple-touch-icon-precomposed.png",
             asset_headers.layer(icons),
         )
-        .fallback(|| async { Error::NotFound.into_response() })
+        .fallback(
+            |uri: Uri| async move { public_error(Error::NotFound, uri.path().ends_with(".json")) },
+        )
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
@@ -189,6 +191,18 @@ impl IntoResponse for Error {
         }
     }
 }
+fn public_error(error: Error, json_format: bool) -> Response {
+    if !json_format || matches!(error, Error::Unauthorized) {
+        return error.into_response();
+    }
+    let status = match error {
+        Error::NotFound => StatusCode::NOT_FOUND,
+        Error::BadRequest => StatusCode::BAD_REQUEST,
+        _ => StatusCode::SERVICE_UNAVAILABLE,
+    };
+    (status, Json(json!({"status": status.as_u16(), "error": status.canonical_reason().unwrap_or("Error")}))).into_response()
+}
+
 #[derive(Template)]
 #[template(path = "home.html")]
 struct HomeTemplate {
@@ -245,7 +259,7 @@ async fn handle(
     let result = dispatch(&app, &mut db, &uri, &params, wants_json, &mut cache_hit).await;
     let mut response = match result {
         Ok(r) => r,
-        Err(e) => e.into_response(),
+        Err(e) => public_error(e, wants_json),
     };
     let metrics = &db.metrics;
     response

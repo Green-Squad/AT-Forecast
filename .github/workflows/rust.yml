@@ -47,7 +47,7 @@ jobs:
           mkdir -p benchmark-results
           docker build -t at-forecast-rust .
           START=$(date +%s%N)
-          docker run -d --name at-forecast-rust --network host -e DATABASE_URL -e CACHE_MODE -e ENABLE_ANALYTICS at-forecast-rust
+          docker run -d --cpus 1 --memory 512m --name at-forecast-rust --network host -e DATABASE_URL -e CACHE_MODE -e ENABLE_ANALYTICS at-forecast-rust
           for attempt in $(seq 1 100); do
             if curl -fsS http://127.0.0.1:8080/healthz > /dev/null; then break; fi
             sleep 0.1
@@ -68,8 +68,8 @@ jobs:
       - name: Compare with original Rails routes and templates
         run: |
           docker build -f Dockerfile.rails -t at-forecast-rails .
-          docker run -d --name at-forecast-rust-compare --network host -e DATABASE_URL -e CACHE_MODE -e ENABLE_ANALYTICS at-forecast-rust
-          docker run -d --name at-forecast-rails --network host -e DATABASE_URL -e AT_FORECAST_TEST_DATABASE -e CACHE_MODE -e PORT=8082 -e RAILS_ENV=production -e SECRET_KEY_BASE=isolated-comparison-only at-forecast-rails bundle exec rails runner tools/rails_compare_server.rb
+          docker run -d --cpus 1 --memory 512m --name at-forecast-rust-compare --network host -e DATABASE_URL -e CACHE_MODE -e ENABLE_ANALYTICS at-forecast-rust
+          docker run -d --cpus 1 --memory 512m --name at-forecast-rails --network host -e DATABASE_URL -e AT_FORECAST_TEST_DATABASE -e CACHE_MODE -e PORT=8082 -e RAILS_ENV=production -e SECRET_KEY_BASE=isolated-comparison-only at-forecast-rails bundle exec rails runner tools/rails_compare_server.rb
           for attempt in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:8082/about > /dev/null; then break; fi
             sleep 1

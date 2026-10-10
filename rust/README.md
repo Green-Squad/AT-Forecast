@@ -106,7 +106,7 @@ gcloud run deploy at-forecast-rust --source . --region REGION --project PROJECT 
   --add-cloudsql-instances PROJECT:REGION:INSTANCE --allow-unauthenticated
 ```
 
-Cloud SQL can use a URL such as `postgresql://USER:PASSWORD@/DATABASE?host=/cloudsql/PROJECT:REGION:INSTANCE`, stored only in the secret. Grant the runtime service account Cloud SQL Client and access to that secret. If using a private IP, attach the same VPC/subnet/egress setup as Rails. If the existing database is external, omit the Cloud SQL flag and use equivalent networking/TLS. Use the new `run.app` URL for comparisons; add a separate subdomain only after validating it. Do not change the Rails service or scheduled Rails refresh job. Cloud deployment, billing, and domain mapping are not performed by this branch.
+Cloud SQL can use a URL such as `postgresql://USER:PASSWORD@localhost/DATABASE?host=/cloudsql/PROJECT:REGION:INSTANCE`, stored only in the secret. Grant the runtime service account Cloud SQL Client and access to that secret. If using a private IP, attach the same VPC/subnet/egress setup as Rails. If the existing database is external, omit the Cloud SQL flag and use equivalent networking/TLS. Use the new `run.app` URL for comparisons; add a separate subdomain only after validating it. Do not change the Rails service or scheduled Rails refresh job. Cloud deployment, billing, and domain mapping are not performed by this branch.
 
 ## Reproducible comparison
 
@@ -116,7 +116,7 @@ Use isolated services, equivalent full data snapshots, CPU/memory, pool size, ti
 # Run Rust with the fixture URL and CACHE_MODE=off as above.
 # Original Rails image, sharing the same local database via host networking on Linux:
 docker build -f Dockerfile.rails -t at-forecast-rails .
-docker run --rm --network host -e DATABASE_URL -e AT_FORECAST_TEST_DATABASE=isolated \
+docker run --rm --cpus 1 --memory 512m --network host -e DATABASE_URL -e AT_FORECAST_TEST_DATABASE=isolated \
   -e CACHE_MODE=off -e PORT=8082 -e RAILS_ENV=production \
   -e SECRET_KEY_BASE=isolated-comparison-only at-forecast-rails \
   bundle exec rails runner tools/rails_compare_server.rb
@@ -133,6 +133,8 @@ python3 tools/benchmark.py --route '/shelters/2.json?api_key={API_KEY}' --concur
 
 Replace fixture IDs/mileages with matching real-snapshot requests. The benchmark records warm p50/p95, query counts, mean query time (including pool wait for Rust), bytes, and page-cache status. Each request opens a fresh connection, uses identity encoding and `Cache-Control: no-cache`; the Rust responses also use `no-store`. No CDN/browser cache is involved. Ten warmups are excluded; concurrency 1 and 5 are separate tests. Add explicit `--allow-isolated-host` only for a dedicated comparison host. Do not put real API keys in route arguments: use the placeholder.
 
-For resource measurements use `docker stats --no-stream CONTAINER`, `docker image inspect IMAGE --format '{{.Size}}'`, and `/proc/PID/status` for process RSS. Report Docker memory and process RSS separately. Time container launch until `/healthz`, then separately until the first database-backed request; preserve the structured `ready_ms` log. Local process startup is not a Cloud Run cold start. The CI artifact measures local Docker-to-health elapsed time, including Docker overhead, and records image/memory plus latency samples on a tiny synthetic dataset; it is not evidence of a production speedup.
+For resource measurements use `docker stats --no-stream CONTAINER`, `docker image inspect IMAGE --format '{{.Size}}'`, and `/proc/PID/status` for process RSS. Report Docker memory and process RSS separately. Time container launch until `/healthz`, then separately until the first database-backed request; preserve the structured `ready_ms` log. Local process startup is not a Cloud Run cold start. The CI artifact measures local Docker-to-health elapsed time, including Docker overhead, and records image/memory plus latency samples on a tiny synthetic dataset with each application capped at one CPU and 512 MiB; it is not evidence of a production speedup.
 
 For Cloud Run repeat on two dedicated services with identical allocation, concurrency, min/max instances, billing mode, and database. Record first request after a **confirmed new instance**, its instance startup log and first DB request separately from warm requests. Obtain billable instance time from Cloud Monitoring metric `run.googleapis.com/container/billable_instance_time` over identical test windows, label-filtered by service and revision, and align with request counts/autoscaling. Query timings, cloud cold starts, and billed time must be measured; do not substitute local startup or client latency. No Cloud Run measurements or Rails-versus-Rust speedup are asserted without those results. Query counts should match; any mismatch is a comparison defect to investigate before attributing a gain to Rust.
+
+Deployment references: [source deployment](https://docs.cloud.google.com/run/docs/deploying-source-code), [PostgreSQL connections](https://docs.cloud.google.com/sql/docs/postgres/connect-instance-cloud-run), [Cloud Run metrics](https://docs.cloud.google.com/monitoring/api/metrics_gcp_p_z).

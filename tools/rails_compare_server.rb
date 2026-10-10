@@ -16,7 +16,8 @@ class ComparisonMetrics
       event = ActiveSupport::Notifications::Event.new(*args)
       next unless Thread.current[:comparison_stats].equal?(stats)
       next if ['SCHEMA', 'TRANSACTION'].include?(event.payload[:name])
-      if event.payload[:cached]
+      # Rails 5.0 identifies cache events by name; newer versions also set :cached.
+      if event.payload[:cached] || event.payload[:name] == 'CACHE'
         stats[:hits] += 1
       else
         stats[:count] += 1; stats[:ms] += event.duration
