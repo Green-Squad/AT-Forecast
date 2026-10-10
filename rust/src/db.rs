@@ -13,13 +13,19 @@ use std::{
 #[derive(Clone, Debug, FromRow)]
 pub struct Shelter {
     pub id: i32,
-    pub name: String,
+    pub name: Option<String>,
     pub mileage: BigDecimal,
-    pub elevation: i32,
-    pub latt: BigDecimal,
-    pub long: BigDecimal,
+    pub elevation: Option<i32>,
+    pub latt: Option<BigDecimal>,
+    pub long: Option<BigDecimal>,
 }
 impl Shelter {
+    pub fn name_label(&self) -> &str {
+        self.name.as_deref().unwrap_or("")
+    }
+    pub fn elevation_text(&self) -> String {
+        self.elevation.map(|v| v.to_string()).unwrap_or_default()
+    }
     pub fn mileage_text(&self) -> String {
         decimal_text(&self.mileage)
     }
@@ -30,7 +36,7 @@ impl Shelter {
     }
     pub fn catalog_json(&self) -> Value {
         json!({"shelter_id":self.id,"name":self.name,"mileage":self.mileage_text(),"elevation":self.elevation,
-            "latt":decimal_text(&self.latt),"long":decimal_text(&self.long),"southbound_mileage":self.southbound()})
+            "latt":self.latt.as_ref().map(decimal_text),"long":self.long.as_ref().map(decimal_text),"southbound_mileage":self.southbound()})
     }
 }
 pub fn decimal_text(d: &BigDecimal) -> String {
@@ -70,8 +76,8 @@ pub struct Daily {
 pub struct Hourly {
     pub id: i32,
     pub date: NaiveDateTime,
-    pub temp: i32,
-    pub description: String,
+    pub temp: Option<i32>,
+    pub description: Option<String>,
     pub wind: Option<String>,
 }
 pub struct DayView {
@@ -82,6 +88,12 @@ pub struct DayView {
     pub times: Vec<String>,
 }
 impl Hourly {
+    pub fn temp_text(&self) -> String {
+        self.temp.map(|v| v.to_string()).unwrap_or_default()
+    }
+    pub fn description_label(&self) -> &str {
+        self.description.as_deref().unwrap_or("")
+    }
     pub fn wind_label(&self) -> &str {
         self.wind.as_deref().unwrap_or("")
     }
@@ -260,8 +272,8 @@ impl Db {
             let d = haversine(
                 lat,
                 lon,
-                s.latt.to_f64().unwrap_or_default(),
-                s.long.to_f64().unwrap_or_default(),
+                s.latt.as_ref().and_then(|v| v.to_f64()).unwrap_or_default(),
+                s.long.as_ref().and_then(|v| v.to_f64()).unwrap_or_default(),
             );
             if d < smallest {
                 smallest = d;

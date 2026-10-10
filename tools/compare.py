@@ -37,6 +37,8 @@ paths = ['/', '/about', '/shelters/2', '/nearest_shelter?nobo_mile=110.5', '/nea
 for path in paths:
     rails, rust = fetch(a.rails,path), fetch(a.rust,path)
     assert rails[0] == rust[0], 'Status differs for ' + path.split('?')[0]
+    if rails[2].get('X-DB-Query-Count') is not None and rust[2].get('X-DB-Query-Count') is not None:
+        assert rails[2]['X-DB-Query-Count'] == rust[2]['X-DB-Query-Count'], 'Query count differs for ' + path.split('?')[0]
     if '.json' in path:
         assert json.loads(rails[1]) == json.loads(rust[1]), 'JSON differs for ' + path.split('?')[0]
     elif rails[0] == 200:

@@ -36,7 +36,7 @@
           <tr class="clickable-shelter" data-href="/shelters/{{ shelter.id }}">
             <td>{{ shelter.mileage_text() }}</td>
             <td>
-              <a href="/shelters/{{ shelter.id }}">{{ shelter.name }}</a>
+              <a href="/shelters/{{ shelter.id }}">{{ shelter.name_label() }}</a>
             </td>
           </tr>
           {% endfor %}

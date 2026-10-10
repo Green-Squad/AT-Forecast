@@ -111,6 +111,8 @@ async fn public_routes_preserve_unbatched_queries() {
     assert_eq!(count(&h), 6);
     let json: Value = serde_json::from_str(&body).unwrap();
     assert_eq!(json[0]["shelters"][0]["mileage"], "100.0");
+    assert!(json[0]["shelters"][0]["latt"].is_null());
+    assert!(json[0]["shelters"][0]["elevation"].is_null());
     assert_eq!(json[1]["average_high"], -3);
     assert_eq!(json[1]["average_low"], -4);
     assert_eq!(

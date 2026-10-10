@@ -9,7 +9,7 @@ CREATE INDEX index_hourly_weathers_on_shelter_id ON hourly_weathers(shelter_id);
 CREATE TABLE keys (id serial PRIMARY KEY, key varchar, created_at timestamp NOT NULL, updated_at timestamp NOT NULL);
 INSERT INTO states VALUES (1,'North Carolina','NC','2020-01-01','2020-01-01'),(2,'Virginia','VA','2020-01-01','2020-01-01');
 INSERT INTO shelters VALUES
- (1,'Start Shelter',100,1000,-81,35,1,'2020-01-01','2020-01-01'),
+ (1,'Start Shelter',100,NULL,NULL,NULL,1,'2020-01-01','2020-01-01'),
  (2,'Middle & <Shelter>',110.5,2000,-81.1,35.1,1,'2020-01-01','2020-01-01'),
  (3,'End Shelter',120,3000,-81.2,35.2,1,'2020-01-01','2020-01-01'),
  (4,'Virginia Shelter',200,4000,-80,37,2,'2020-01-01','2020-01-01'),
@@ -21,7 +21,7 @@ INSERT INTO weathers VALUES
  (4,'2020-01-01 17:00:00',50,40,'scattered clouds',3,'2020-01-01','2020-01-01','5 mph W'),
  (5,'2020-01-01 17:00:00',-3,-4,'fog',4,'2020-01-01','2020-01-01','5 mph W');
 INSERT INTO hourly_weathers VALUES
- (1,'2020-01-01 14:00:00',5,'clear sky',2,'2020-01-01','2020-01-01',NULL),
+ (1,'2020-01-01 14:00:00',NULL,NULL,2,'2020-01-01','2020-01-01',NULL),
  (2,'2020-01-01 17:00:00',10,'clear sky',2,'2020-01-01','2020-01-01','3 mph N'),
  -- Eastern day boundary: 04:59 UTC still belongs to January 1; 05:00 belongs to January 2.
  (3,'2020-01-02 04:59:00',1,'mist',2,'2020-01-01','2020-01-01','1 mph N'),
