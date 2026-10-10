@@ -385,9 +385,11 @@ async fn dispatch(
                 } else {
                     vec![s]
                 };
+                let shelter_ids: Vec<i32> = shelters.iter().map(|s| s.id).collect();
+                let mut forecasts = db.days_many(&shelter_ids, cfg).await?;
                 let mut output = Vec::new();
                 for s in shelters {
-                    let days = db.days(&s, false, cfg).await?;
+                    let days = forecasts.remove(&s.id).unwrap_or_default();
                     output.push(json!({"shelter_id":s.id,"name":s.name,"mileage":s.mileage_text(),"elevation":s.elevation,
                         "southbound_mileage":s.southbound(),"daily_weather":days.iter().map(|d|d.json(cfg)).collect::<Vec<_>>() }));
                 }
@@ -436,7 +438,7 @@ async fn shelter_html(
     cfg: &Config,
     write_page_cache: bool,
 ) -> Result<Response, Error> {
-    let days = db.days(&s, true, cfg).await?;
+    let days = db.days(&s, cfg).await?;
     let Some(first) = days.first() else {
         return Err(Error::Unavailable);
     };

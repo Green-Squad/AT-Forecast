@@ -33,12 +33,14 @@ key = quote(os.environ.get('BENCH_API_KEY','fixture-key'), safe='')
 paths = ['/', '/about', '/shelters/2', '/nearest_shelter?nobo_mile=110.5', '/nearest_shelter?coords=35.1,-81.1',
     '/shelters/999999', '/shelters/999999.json', '/index.json', '/shelters/2.json?api_key=wrong',
     '/index.json?api_key=' + key, '/index.json?include_shelters=true&api_key=' + key,
-    '/shelters/2.json?api_key=' + key, '/shelters/1.json?dist_miles=20&api_key=' + key]
+    '/shelters/2.json?api_key=' + key, '/shelters/1.json?dist_miles=20&api_key=' + key,
+    '/shelters/1.json?dist_miles=130&api_key=' + key, '/shelters/1.json?dist_miles=0&api_key=' + key,
+    '/shelters/5.json?api_key=' + key]
 for path in paths:
     rails, rust = fetch(a.rails,path), fetch(a.rust,path)
     assert rails[0] == rust[0], 'Status differs for ' + path.split('?')[0]
     if rails[2].get('X-DB-Query-Count') is not None and rust[2].get('X-DB-Query-Count') is not None:
-        assert rails[2]['X-DB-Query-Count'] == rust[2]['X-DB-Query-Count'], 'Query count differs for ' + path.split('?')[0]
+        assert int(rust[2]['X-DB-Query-Count']) <= int(rails[2]['X-DB-Query-Count']), 'Rust query count increased for ' + path.split('?')[0]
     if '.json' in path:
         assert json.loads(rails[1]) == json.loads(rust[1]), 'JSON differs for ' + path.split('?')[0]
     elif rails[0] == 200:
@@ -46,4 +48,5 @@ for path in paths:
         assert x.text == y.text, 'Visible text differs for ' + path.split('?')[0]
         assert x.links == y.links, 'Links differ for ' + path.split('?')[0]
     # Error copy and CSRF tokens intentionally differ; no write endpoints exist in Rust.
-    print('PASS', path.split('?')[0], rails[0])
+    print('PASS', path.split('?')[0], rails[0], 'queries rails/rust:',
+        rails[2].get('X-DB-Query-Count'), rust[2].get('X-DB-Query-Count'))

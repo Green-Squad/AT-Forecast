@@ -25,7 +25,7 @@ fn count(headers: &axum::http::HeaderMap) -> u32 {
         .unwrap()
 }
 #[tokio::test]
-async fn public_routes_preserve_unbatched_queries() {
+async fn public_routes_preserve_responses_with_bounded_queries() {
     // Explicitly opt in; tests never connect to a production DATABASE_URL accidentally.
     if std::env::var("AT_FORECAST_TEST_DATABASE").as_deref() != Ok("isolated") {
         eprintln!(
@@ -51,14 +51,14 @@ async fn public_routes_preserve_unbatched_queries() {
     );
     let (status, h, html) = request(&app, "/").await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(count(&h), 5); // 1 states + 2 averages + 2 shelters
+    assert_eq!(count(&h), 3); // states + grouped averages + ordered shelters
     assert!(html.contains("State average: 26&deg; / 12&deg;")); // (10+20+50)/3 and (-1-2+40)/3; excludes 2100
     assert!(html.contains("Middle &#38; &#60;Shelter&#62;"));
     assert!(html.contains("/shelters/2"));
     assert!(html.find("Start Shelter").unwrap() < html.find("Middle &#38;").unwrap());
     let (status, h, html) = request(&app, "/shelters/2").await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(count(&h), 8); // shelter + daily + (2 + 1 + 1) hourly + 2 neighbors
+    assert_eq!(count(&h), 5); // shelter + daily + hourly + 2 neighbors
     assert_eq!(h["x-db-query-cache-hits"], "6");
     assert_eq!(html.matches("Previous Shelter</a>").count(), 2);
     assert_eq!(html.matches("Next Shelter</a>").count(), 2);
@@ -69,7 +69,7 @@ async fn public_routes_preserve_unbatched_queries() {
     assert!(html.contains("NOBO Mile 110.5"));
     let (status, h, body) = request(&app, "/shelters/2.json?api_key=fixture-key").await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(count(&h), 6); // shelter, auth, daily, 3 hourly queries
+    assert_eq!(count(&h), 4); // shelter + auth + daily + hourly
     let json: Value = serde_json::from_str(&body).unwrap();
     assert_eq!(json[0]["mileage"], "110.5");
     assert_eq!(json[0]["southbound_mileage"], 2082.5);
@@ -89,7 +89,7 @@ async fn public_routes_preserve_unbatched_queries() {
     let (status, h, body) =
         request(&app, "/shelters/1.json?api_key=fixture-key&dist_miles=20").await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(count(&h), 9); // anchor + auth + ahead + (1+3) + (1+1)
+    assert_eq!(count(&h), 5); // anchor + auth + range + batched daily + batched hourly
     let json: Value = serde_json::from_str(&body).unwrap();
     let ids: Vec<_> = json
         .as_array()
@@ -99,8 +99,22 @@ async fn public_routes_preserve_unbatched_queries() {
         .collect();
     assert_eq!(ids.len(), 2);
     assert!(ids.contains(&2) && ids.contains(&3) && !ids.contains(&1));
+    let (_, h, body) =
+        request(&app, "/shelters/1.json?api_key=fixture-key&dist_miles=130").await;
+    assert_eq!(count(&h), 5); // Five shelters still need only two forecast statements.
+    let json: Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(json.as_array().unwrap().len(), 5);
+    for shelter in json.as_array().unwrap() {
+        if matches!(shelter["shelter_id"].as_i64(), Some(5 | 6)) {
+            assert!(shelter["daily_weather"].as_array().unwrap().is_empty());
+        }
+    }
+    let (_, h, body) =
+        request(&app, "/shelters/1.json?api_key=fixture-key&dist_miles=0").await;
+    assert_eq!(count(&h), 3); // Empty range skips both forecast queries.
+    assert_eq!(serde_json::from_str::<Value>(&body).unwrap(), serde_json::json!([]));
     let (_, h, body) = request(&app, "/index.json?api_key=fixture-key").await;
-    assert_eq!(count(&h), 4);
+    assert_eq!(count(&h), 3);
     let json: Value = serde_json::from_str(&body).unwrap();
     assert!(json[0].get("shelters").is_none());
     let (_, h, body) = request(
@@ -108,13 +122,15 @@ async fn public_routes_preserve_unbatched_queries() {
         "/index.json?api_key=fixture-key&include_shelters=true",
     )
     .await;
-    assert_eq!(count(&h), 6);
+    assert_eq!(count(&h), 4);
     let json: Value = serde_json::from_str(&body).unwrap();
     assert_eq!(json[0]["shelters"][0]["mileage"], "100.0");
     assert!(json[0]["shelters"][0]["latt"].is_null());
     assert!(json[0]["shelters"][0]["elevation"].is_null());
     assert_eq!(json[1]["average_high"], -3);
     assert_eq!(json[1]["average_low"], -4);
+    assert_eq!(json[2]["average_high"], 0);
+    assert_eq!(json[2]["average_low"], 0);
     assert_eq!(
         request(&app, "/index.json").await.0,
         StatusCode::UNAUTHORIZED
@@ -187,7 +203,7 @@ async fn public_routes_preserve_unbatched_queries() {
         std::env::temp_dir().join(format!("at-forecast-test-{}", std::process::id()));
     let _ = tokio::fs::remove_dir_all(&cached.config.cache_dir).await;
     let (_, h, first) = request(&cached, "/").await;
-    assert_eq!(count(&h), 5);
+    assert_eq!(count(&h), 3);
     let (_, h, second) = request(&cached, "/").await;
     assert_eq!(count(&h), 0);
     assert_eq!(h["x-page-cache"], "hit");
@@ -196,10 +212,10 @@ async fn public_routes_preserve_unbatched_queries() {
         .unwrap()
         .set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(7202))
         .unwrap();
-    assert_eq!(count(&request(&cached, "/").await.1), 5);
+    assert_eq!(count(&request(&cached, "/").await.1), 3);
     // Shelter cache writes do not create a new serving cache. Every request still queries PostgreSQL.
     request(&cached, "/shelters/2").await;
-    assert_eq!(count(&request(&cached, "/shelters/2").await.1), 8);
+    assert_eq!(count(&request(&cached, "/shelters/2").await.1), 5);
     request(&cached, "/shelters/2.json?api_key=fixture-key").await;
     assert_eq!(
         request(&cached, "/shelters/2.json").await.0,

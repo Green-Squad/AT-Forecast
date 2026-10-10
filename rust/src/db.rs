@@ -20,6 +20,7 @@ pub struct Shelter {
     pub name: Option<String>,
     pub mileage: BigDecimal,
     pub elevation: Option<i32>,
+    pub state_id: Option<i32>,
     pub latt: Option<BigDecimal>,
     pub long: Option<BigDecimal>,
 }
@@ -54,8 +55,9 @@ struct State {
 }
 #[derive(FromRow)]
 struct Average {
-    high: i32,
-    low: i32,
+    state_id: i32,
+    high: i64,
+    low: i64,
 }
 pub struct StateView {
     pub id: i32,
@@ -76,8 +78,9 @@ pub struct Daily {
     pub shelter_id: i32,
     pub created_at: NaiveDateTime,
 }
-#[derive(Debug, FromRow)]
+#[derive(Clone, Debug, FromRow)]
 pub struct Hourly {
+    pub shelter_id: i32,
     pub id: i32,
     pub date: NaiveDateTime,
     pub temp: Option<i32>,
@@ -208,46 +211,63 @@ impl Db {
     }
     pub async fn states(&mut self, include: bool, cfg: &Config) -> Result<Vec<StateView>, Error> {
         let states: Vec<State> = rows!(self, sqlx::query_as("SELECT * FROM states"));
+        if states.is_empty() {
+            return Ok(Vec::new());
+        }
+        let state_ids: Vec<i32> = states.iter().map(|s| s.id).collect();
         let now = Utc::now().with_timezone(&cfg.database_timezone);
         let cutoff = now
             .date_naive()
             .and_hms_micro_opt(23, 59, 59, 999999)
             .unwrap();
-        let mut out = Vec::new();
-        for s in states {
-            // Deliberately keep one query and Rust-side integer averaging per state, as Rails does.
-            let averages:Vec<Average> = rows!(self,sqlx::query_as("SELECT weathers.id, high, low FROM weathers INNER JOIN shelters ON shelters.id = weathers.shelter_id WHERE shelters.state_id = $1 AND weathers.weather_date <= $2").bind(s.id).bind(cutoff));
-            let (mut high, mut low) = (0i64, 0i64);
-            for a in &averages {
-                high += i64::from(a.high);
-                low += i64::from(a.low);
-            }
-            if !averages.is_empty() {
-                high = high.div_euclid(averages.len() as i64);
-                low = low.div_euclid(averages.len() as i64);
-            }
-            out.push(StateView {
-                id: s.id,
-                slug: s.name.replace(' ', ""),
-                name: s.name,
-                high,
-                low,
-                shelters: Vec::new(),
-            });
-        }
-        // Rails builds the states/averages first, then templates evaluate each lazy shelters relation.
+        // FLOOR preserves Ruby's integer division, including negative averages.
+        // A null temperature still fails decoding instead of silently changing the average.
+        let averages: Vec<Average> = rows!(
+            self,
+            sqlx::query_as(
+                r#"SELECT shelters.state_id,
+                   (CASE WHEN COUNT(weathers.high) = COUNT(*)
+                         THEN FLOOR(SUM(weathers.high)::numeric / COUNT(*)) END)::bigint AS high,
+                   (CASE WHEN COUNT(weathers.low) = COUNT(*)
+                         THEN FLOOR(SUM(weathers.low)::numeric / COUNT(*)) END)::bigint AS low
+                   FROM weathers INNER JOIN shelters ON shelters.id = weathers.shelter_id
+                   WHERE shelters.state_id = ANY($1) AND weathers.weather_date <= $2
+                   GROUP BY shelters.state_id"#
+            )
+            .bind(&state_ids)
+            .bind(cutoff)
+        );
+        let mut averages: HashMap<i32, Average> =
+            averages.into_iter().map(|a| (a.state_id, a)).collect();
+        let mut shelters_by_state: HashMap<i32, Vec<Shelter>> = HashMap::new();
         if include {
-            for s in &mut out {
-                s.shelters = rows!(
-                    self,
-                    sqlx::query_as(
-                        "SELECT * FROM shelters WHERE state_id = $1 ORDER BY mileage ASC"
-                    )
-                    .bind(s.id)
-                );
+            let shelters: Vec<Shelter> = rows!(
+                self,
+                sqlx::query_as(
+                    "SELECT * FROM shelters WHERE state_id = ANY($1) ORDER BY mileage ASC"
+                )
+                .bind(&state_ids)
+            );
+            for shelter in shelters {
+                if let Some(state_id) = shelter.state_id {
+                    shelters_by_state.entry(state_id).or_default().push(shelter);
+                }
             }
         }
-        Ok(out)
+        Ok(states
+            .into_iter()
+            .map(|s| {
+                let average = averages.remove(&s.id);
+                StateView {
+                    id: s.id,
+                    slug: s.name.replace(' ', ""),
+                    name: s.name,
+                    high: average.as_ref().map_or(0, |a| a.high),
+                    low: average.as_ref().map_or(0, |a| a.low),
+                    shelters: shelters_by_state.remove(&s.id).unwrap_or_default(),
+                }
+            })
+            .collect())
     }
     pub async fn shelter(&mut self, id: i32) -> Result<Shelter, Error> {
         let mut rows: Vec<Shelter> = rows!(
@@ -310,50 +330,68 @@ impl Db {
                 .bind(&s.mileage)
         ))
     }
-    pub async fn days(
+    pub async fn days(&mut self, s: &Shelter, cfg: &Config) -> Result<Vec<DayView>, Error> {
+        Ok(self
+            .days_many(&[s.id], cfg)
+            .await?
+            .remove(&s.id)
+            .unwrap_or_default())
+    }
+    pub async fn days_many(
         &mut self,
-        s: &Shelter,
-        html: bool,
+        shelter_ids: &[i32],
         cfg: &Config,
-    ) -> Result<Vec<DayView>, Error> {
+    ) -> Result<HashMap<i32, Vec<DayView>>, Error> {
+        if shelter_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
         let daily: Vec<Daily> = rows!(
             self,
             sqlx::query_as(
-                "SELECT * FROM weathers WHERE shelter_id = $1 ORDER BY weather_date ASC"
+                "SELECT * FROM weathers WHERE shelter_id = ANY($1) ORDER BY weather_date ASC"
             )
-            .bind(s.id)
+            .bind(shelter_ids)
         );
-        let mut out = Vec::new();
-        for d in daily {
-            let shown = displayed(d.weather_date, cfg);
-            let start = shown.date_naive().and_hms_opt(0, 0, 0).unwrap();
-            let end = shown
-                .date_naive()
-                .and_hms_micro_opt(23, 59, 59, 999999)
-                .unwrap();
-            let start = local_date(start, cfg.display_timezone)
-                .with_timezone(&cfg.database_timezone)
-                .naive_local();
-            let end = local_date(end, cfg.display_timezone)
-                .with_timezone(&cfg.database_timezone)
-                .naive_local();
-            let empty = if html {
-                // ActiveRecord Relation#empty? issues SELECT 1 ... LIMIT 1 before the view iterates.
-                let exists:Vec<(i32,)>=rows!(self,sqlx::query_as("SELECT 1 FROM hourly_weathers WHERE shelter_id = $1 AND date BETWEEN $2 AND $3 LIMIT 1").bind(s.id).bind(start).bind(end));
-                exists.is_empty()
-            } else {
-                false
-            };
-            let hourly: Vec<Hourly> = if empty {
-                Vec::new()
-            } else {
-                rows!(self,sqlx::query_as("SELECT * FROM hourly_weathers WHERE shelter_id = $1 AND date BETWEEN $2 AND $3 ORDER BY date ASC").bind(s.id).bind(start).bind(end))
-            };
+        if daily.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let windows: Vec<_> = daily
+            .iter()
+            .map(|d| day_bounds(d.weather_date, cfg))
+            .collect();
+        let start = windows.iter().map(|(start, _)| *start).min().unwrap();
+        let end = windows.iter().map(|(_, end)| *end).max().unwrap();
+        let forecast_ids: Vec<i32> = daily.iter().map(|d| d.shelter_id).collect();
+        let hourly: Vec<Hourly> = rows!(
+            self,
+            sqlx::query_as(
+                "SELECT * FROM hourly_weathers WHERE shelter_id = ANY($1) AND date BETWEEN $2 AND $3 ORDER BY date ASC"
+            )
+            .bind(&forecast_ids)
+            .bind(start)
+            .bind(end)
+        );
+        let mut hourly_by_shelter: HashMap<i32, Vec<Hourly>> = HashMap::new();
+        for h in hourly {
+            hourly_by_shelter.entry(h.shelter_id).or_default().push(h);
+        }
+        let mut out: HashMap<i32, Vec<DayView>> = HashMap::new();
+        for (d, (start, end)) in daily.into_iter().zip(windows) {
+            // Keep the original timestamp bounds, including timezone/DST conversions.
+            // Filtering also excludes hourly rows on days without a daily forecast.
+            let hourly: Vec<Hourly> = hourly_by_shelter
+                .get(&d.shelter_id)
+                .into_iter()
+                .flatten()
+                .filter(|h| h.date >= start && h.date <= end)
+                .cloned()
+                .collect();
             let times = hourly
                 .iter()
                 .map(|h| displayed(h.date, cfg).format("%l:%M %p").to_string())
                 .collect();
-            out.push(DayView {
+            let shown = displayed(d.weather_date, cfg);
+            out.entry(d.shelter_id).or_default().push(DayView {
                 date_label: shown.format("%A %B %-d, %Y").to_string(),
                 category: category(&d.description),
                 daily: d,
@@ -363,6 +401,23 @@ impl Db {
         }
         Ok(out)
     }
+
+}
+fn day_bounds(date: NaiveDateTime, cfg: &Config) -> (NaiveDateTime, NaiveDateTime) {
+    let shown = displayed(date, cfg);
+    let start = shown.date_naive().and_hms_opt(0, 0, 0).unwrap();
+    let end = shown
+        .date_naive()
+        .and_hms_micro_opt(23, 59, 59, 999999)
+        .unwrap();
+    (
+        local_date(start, cfg.display_timezone)
+            .with_timezone(&cfg.database_timezone)
+            .naive_local(),
+        local_date(end, cfg.display_timezone)
+            .with_timezone(&cfg.database_timezone)
+            .naive_local(),
+    )
 }
 pub fn haversine(a: f64, b: f64, c: f64, d: f64) -> f64 {
     let (a, b, c, d) = (
@@ -388,6 +443,26 @@ mod tests {
         assert_eq!(category("scattered clouds"), "clouds");
         assert_eq!((-3i64).div_euclid(2), -2);
         assert_eq!(haversine(40.0, -75.0, 40.0, -75.0), 0.0);
+    }
+    #[test]
+    fn hourly_day_bounds_follow_daylight_saving_time() {
+        let cfg = Config {
+            query_timeout: Duration::from_secs(5),
+            cache: false,
+            cache_dir: "/tmp/unused".into(),
+            public_dir: "public".into(),
+            database_timezone: chrono_tz::UTC,
+            display_timezone: chrono_tz::America::New_York,
+            analytics: false,
+        };
+        for (date, hours) in [("2020-03-08 17:00:00", 23), ("2020-11-01 17:00:00", 25)] {
+            let date = NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S").unwrap();
+            let (start, end) = day_bounds(date, &cfg);
+            assert_eq!(
+                (end - start + chrono::Duration::microseconds(1)).num_hours(),
+                hours
+            );
+        }
     }
     #[tokio::test]
     async fn request_reuses_connection_and_returns_it_on_drop() {

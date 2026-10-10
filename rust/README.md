@@ -1,4 +1,4 @@
-# AT Forecast: Rust baseline without query optimizations
+# AT Forecast: Rust reader with batched queries
 
 This branch rewrites the public reader in Axum, SQLx/PostgreSQL, and Askama. It starts from Rails commit `a19164aa62457bc64856f004710e4ec8950dd0b8`. The root Dockerfile builds Rust; `Dockerfile.rails` preserves the original web container. Rails source, schema, migrations, and `Dockerfile-sync` remain available and unchanged. Do not run `Dockerfile-init` or migrations against the existing database.
 
@@ -11,23 +11,27 @@ This branch rewrites the public reader in Axum, SQLx/PostgreSQL, and Askama. It 
 
 Rust does not implement admin/login, schema initialization, data import, or weather refresh. Keep the existing Rails refresh job running against the same database. Public requests do not call OpenWeatherMap.
 
-## Deliberately unchanged query work
+## Batched query work
 
-This is **not** the batched implementation proposed earlier. No preloading, joined forecast query, database-side aggregate, GPS index/catalog cache, new pagination, or new page-serving cache was introduced.
+The reader now batches state averages, shelter lists, daily forecasts, and hourly forecasts. Rails source and its refresh job remain unchanged. Caching, service region, schema, and API authorization are unchanged.
 
 | Route | Data statements per uncached request |
 | --- | --- |
-| Homepage HTML, S states | `1 + S + S`: states, one average query per state, one ordered shelter query per state |
-| Index JSON without shelters | `1 + 1 + S`: API key, states, one average query per state |
-| Index JSON with shelters | Above plus `S` shelter queries |
-| Shelter HTML, D forecast days, N nonempty hourly days | `1 + 1 + D + N + 2`: shelter, daily forecasts, per-day emptiness checks, per-nonempty-day hourly reads, two neighbors |
-| Single shelter JSON | `1 + 1 + 1 + D`: shelter, key, daily forecasts, one hourly query per day |
-| Distance JSON | Anchor, key, range query, then a daily query and per-day hourly queries **for every returned shelter** |
-| GPS lookup HTML | Full shelter SELECT and Haversine scan, then the same forecast/neighbor work |
+| Homepage HTML | 3: states, grouped averages, ordered shelters |
+| Index JSON without shelters | 3: API key, states, grouped averages |
+| Index JSON with shelters | 4: above plus one ordered shelter query |
+| Shelter HTML | 5: shelter, daily forecasts, hourly forecasts, two neighbors |
+| Single shelter JSON | 4: shelter, key, daily forecasts, hourly forecasts |
+| Distance JSON | 5: anchor, key, range, daily forecasts for all results, hourly forecasts for all results |
+| GPS lookup HTML | Full shelter SELECT and Haversine scan, then batched forecast/neighbor work |
 
-Repeated previous/next calls use a **request-local** cache, matching the existing Rails query cache rather than adding a cross-request optimization. `X-DB-Query-Cache-Hits` reports these hits. SQLx prepared statements and ActiveRecord query caching are different mechanisms; compare actual query counts, not just method calls. Templates have no I/O; their existing database work happens before rendering, with the same unbatched query shapes. The relative scheduling of some template queries differs.
+Empty state/range/forecast results skip unnecessary statements. Query counts are independent of the number of forecast days or shelters returned. No result lists are truncated.
 
-State averages still load all qualifying rows and divide integer totals in application code; negative division rounds down as in Ruby. The original cutoff includes all historical weather through today, not just today's forecast. State/GPS/distance queries retain their original unspecified order; explicit mileage/date orders are retained. No result lists are truncated.
+Daily and hourly rows use separate batched queries. Hourly rows are grouped by shelter and filtered using the original display-day timestamp bounds, preserving timezone/DST behavior, dates without hourly rows, and daily/date ordering. The distance API retains the order of its shelter range result.
+
+State averages use grouped SQL totals with floor division, including negative values. States with no qualifying weather still report zero. The original cutoff includes all historical weather through today, not just today's forecast. State/GPS/distance queries retain their original unspecified order; explicit mileage/date orders are retained.
+
+Repeated previous/next calls retain their request-local query cache. `X-DB-Query-Cache-Hits` reports those hits. Each request still lazily acquires one pooled PostgreSQL connection and reuses it until completion; health checks, timeouts, and connection return behavior are unchanged.
 
 `CACHE_MODE=rails` (default) preserves the homepage file cache with the original `floor(age_seconds) > 7200` expiry test. Shelter responses are written to cache files but **not read**, matching the repository's plain Rails container (no reverse-proxy cache rewrite is supplied). JSON authentication is never bypassed. Files are ephemeral under `/tmp/at-forecast-cache`; the homepage cache has one entry, and shelter files overwrite the existing ID/format path. Entries over 8 MiB are not cached; their complete responses still render. File cache has the same cross-instance invalidation limitation as Rails: a separate refresh job cannot delete a web container's local files. `CACHE_MODE=off` disables all file-cache reads/writes independently. There is no permanent in-memory page cache or shared cache.
 
@@ -85,7 +89,7 @@ cargo clippy --locked --manifest-path rust/Cargo.toml --all-targets -- -D warnin
 cargo fmt --manifest-path rust/Cargo.toml --check
 ```
 
-The explicit `AT_FORECAST_TEST_DATABASE=isolated` opt-in prevents integration tests accidentally using a production URL. Without it the integration test announces that PostgreSQL validation was skipped; unit tests still run. Fixtures cover negative averages, future-day cutoff, unordered distance ranges, escaped names, Eastern midnight boundaries, absent hourly data, complete forecasts, lookup relationships, API authorization, read-only writes rejected, cache behavior, static CSS, missing records, and injection rejection. Query-count assertions preserve increasing work: fixture shelter HTML uses 8 statements; single JSON uses 6; two-shelter distance JSON uses 9. CI runs these with PostgreSQL 17, builds/smoke-tests the non-root image, checks shutdown, and compares with the actual Rails handlers/templates on the same fixture.
+The explicit `AT_FORECAST_TEST_DATABASE=isolated` opt-in prevents integration tests accidentally using a production URL. Without it the integration test announces that PostgreSQL validation was skipped; unit tests still run. Fixtures cover negative averages, future-day cutoff, unordered distance ranges, escaped names, Eastern midnight boundaries, absent hourly data, complete forecasts, lookup relationships, API authorization, read-only writes rejected, cache behavior, static CSS, missing records, and injection rejection. Query-count assertions verify bounded work: shelter HTML uses 5 statements; single JSON uses 4; distance JSON uses 5 for both two and five shelters, or 3 for an empty range. Fixtures also cover states without weather and negative fractional averages; unit tests cover 23/25-hour daylight-saving days. CI runs these with PostgreSQL 17, builds/smoke-tests the non-root image, checks shutdown, and compares with the actual Rails handlers/templates on the same fixture.
 
 ## Image and separate Cloud Run service
 
@@ -135,6 +139,6 @@ Replace fixture IDs/mileages with matching real-snapshot requests. The benchmark
 
 For resource measurements use `docker stats --no-stream CONTAINER`, `docker image inspect IMAGE --format '{{.Size}}'`, and `/proc/PID/status` for process RSS. Report Docker memory and process RSS separately. Time container launch until `/healthz`, then separately until the first database-backed request; preserve the structured `ready_ms` log. Local process startup is not a Cloud Run cold start. The CI artifact measures local Docker-to-health elapsed time, including Docker overhead, and records image/memory plus latency samples on a tiny synthetic dataset with each application capped at one CPU and 512 MiB; it is not evidence of a production speedup.
 
-For Cloud Run repeat on two dedicated services with identical allocation, concurrency, min/max instances, billing mode, and database. Record first request after a **confirmed new instance**, its instance startup log and first DB request separately from warm requests. Obtain billable instance time from Cloud Monitoring metric `run.googleapis.com/container/billable_instance_time` over identical test windows, label-filtered by service and revision, and align with request counts/autoscaling. Query timings, cloud cold starts, and billed time must be measured; do not substitute local startup or client latency. No Cloud Run measurements or Rails-versus-Rust speedup are asserted without those results. Query counts should match; any mismatch is a comparison defect to investigate before attributing a gain to Rust.
+For Cloud Run repeat on two dedicated services with identical allocation, concurrency, min/max instances, billing mode, and database. Record first request after a **confirmed new instance**, its instance startup log and first DB request separately from warm requests. Obtain billable instance time from Cloud Monitoring metric `run.googleapis.com/container/billable_instance_time` over identical test windows, label-filtered by service and revision, and align with request counts/autoscaling. Query timings, cloud cold starts, and billed time must be measured; do not substitute local startup or client latency. No Cloud Run measurements or Rails-versus-Rust speedup are asserted without those results. Visible HTML, links, JSON, statuses, and authentication must match Rails. Rust intentionally uses fewer SQL statements, so report query counts alongside timings and attribute that difference to batching rather than the language alone.
 
 Deployment references: [source deployment](https://docs.cloud.google.com/run/docs/deploying-source-code), [PostgreSQL connections](https://docs.cloud.google.com/sql/docs/postgres/connect-instance-cloud-run), [Cloud Run metrics](https://docs.cloud.google.com/monitoring/api/metrics_gcp_p_z).
