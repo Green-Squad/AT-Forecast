@@ -1,0 +1,116 @@
+{% extends "layout.html" %}{% block content %}
+<a href="https://goo.gl/uaRHtn" class="alert alert-info" style="display: block;"><strong>Android app available.</strong> Download from the Google Play Store.</a>
+
+<h2 class="content-subhead">Find Shelter by mile.</h2>
+<form id="mile-search-form" onsubmit="return nearestShelter();" action="#" accept-charset="UTF-8" method="post" class="pure-form pure-g">
+  <div class="pure-u-5-6">
+    <input type="number" step="0.1" name="mileage" id="mileage" class="pure-u-1" placeholder="NOBO Mileage e.g. 630">
+  </div>
+  <div class="pure-u-1-6">
+    <div class="pure-g fill-height">
+      <div class="pure-u-1-24"></div>
+      <input type="submit" value="Go" class="pure-button pure-button-primary pure-u-23-24">
+    </div>
+  </div>
+</form>
+
+<h2 class="content-subhead">Find Shelter by current location.</h2>
+
+<div class="pure-button pure-button-primary" id="gps-button">Find by GPS</div>
+
+<h2 class="content-subhead">Find Shelter by state.</h2>
+{% for state in states %}
+  <div class="state-content pure-g">
+    <div class="pure-u-1 pure-u-md-2-3">
+      <div class="state pure-button pure-u-1 display-table" data-statename="{{ state.slug }}">
+        <div class="table-cell pull-left">
+          {{ state.name }}
+        </div>
+        <div class="table-cell pull-right">
+          <span class="post-category">State average: {{ state.high }}&deg; / {{ state.low }}&deg;</span>
+        </div>
+      </div>
+      <div id="{{ state.slug }}" class="hidden">
+        <table class="pure-table pure-table-striped shelter-list fill-width">
+          {% for shelter in state.shelters %}
+          <tr class="clickable-shelter" data-href="/shelters/{{ shelter.id }}">
+            <td>{{ shelter.mileage_text() }}</td>
+            <td>
+              <a href="/shelters/{{ shelter.id }}">{{ shelter.name }}</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+  </div>
+{% endfor %}
+
+<script type="text/javascript">
+  var clickableShelters = document.getElementsByClassName('clickable-shelter');
+  for (var i = 0; i < clickableShelters.length; i++) {
+    clickableShelters[i].addEventListener('click', function() {
+      shelterPath = this.dataset.href;
+      window.location.href = shelterPath;
+    });
+  }
+  function nearestShelter() {
+    var mileage = document.getElementById('mileage').value;
+    if (mileage !== '') {
+      window.location.href = '/nearest_shelter?nobo_mile=' + mileage;
+    }
+    return false;
+  }
+
+  states = document.getElementsByClassName('state');
+  for (var i = 0; i < states.length; i++) {
+      states[i].addEventListener('click', function() {
+        state = this.dataset.statename;
+        stateWeather = document.getElementById(state);
+        if (stateWeather.className === 'hidden') {
+          stateWeather.className = 'show';
+        } else {
+          stateWeather.className = 'hidden';
+        }
+      });
+  }
+  document.addEventListener('keydown', (event) => {
+    if (event.keyCode === 9) {
+      nearestShelter();
+    }
+  });
+
+  var gpsButton = document.getElementById('gps-button');
+  gpsButton.addEventListener('click', function() {
+    gpsButton.innerHTML = 'Finding your location';
+    var options = {
+      enableHighAccuracy: true,
+      timeout: 60000,
+      maximumAge: 10 * 60000
+    };
+
+    function success(pos) { // success callback
+      var coords = [pos.coords.latitude, pos.coords.longitude];
+      goToPage(coords);
+    };
+
+    function goToPage(coords) {
+      window.location.href = '/nearest_shelter?coords=' + coords[0] + ',' + coords[1];
+    }
+
+    function error(err) { // error callback
+      console.warn('ERROR(' + err.code + '): ' + err.message);
+      gpsButton.innerHTML = 'Error: ' + err.message;
+    };
+
+    navigator.geolocation.getCurrentPosition(success, error, options);
+  });
+
+
+
+
+
+
+
+</script>
+{% endblock %}

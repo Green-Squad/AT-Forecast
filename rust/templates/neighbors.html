@@ -1,0 +1,2 @@
+{% if let Some(p) = previous %}<a href="/shelters/{{ p.id }}" class="pure-button pure-button-primary">Previous Shelter</a>{% endif %}
+{% if let Some(n) = next %}<a href="/shelters/{{ n.id }}" class="pure-button pure-button-primary">Next Shelter</a>{% endif %}

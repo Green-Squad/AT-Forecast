@@ -1,28 +1,17 @@
-# Use an official Ruby image as a parent image
-FROM ruby:2.7
+FROM rust:1.99-slim-trixie AS builder
+WORKDIR /build
+COPY rust/ ./rust/
+RUN cargo build --locked --release --manifest-path rust/Cargo.toml
 
-# Set the working directory in the container
-WORKDIR /usr/src/app
-
-# Copy the Gemfile and Gemfile.lock into the container
-COPY Gemfile Gemfile.lock ./
-
-# Not sure why we need to do this on Google Cloud
-RUN gem install bundler -v '1.14.6'
-
-# Install any needed gems specified in Gemfile
-RUN bundle install
-
-# Copy the rest of your app's source code from your host to your container
-COPY . .
-
-# Add metadata to the image to describe which port the container is listening on at runtime
-EXPOSE 3000
-
-# Precompile assets
-# Set RAILS_ENV and SECRET_KEY_BASE as these might be required for asset compilation
-ENV RAILS_ENV=production SECRET_KEY_BASE=temporary_key
-RUN rails assets:precompile
-
-# Start the main process (in this case, Puma server)
-CMD ["rails", "server", "-b", "0.0.0.0"]
+FROM debian:trixie-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app
+WORKDIR /app
+COPY --from=builder /build/rust/target/release/at-forecast /usr/local/bin/at-forecast
+COPY public/assets/ ./public/assets/
+COPY public/favicon.ico public/robots.txt public/apple-touch-icon.png public/apple-touch-icon-precomposed.png ./public/
+ENV PORT=8080 PUBLIC_DIR=/app/public CACHE_DIR=/tmp/at-forecast-cache
+USER 10001:10001
+EXPOSE 8080
+CMD ["at-forecast"]

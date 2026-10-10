@@ -1,0 +1,9 @@
+.git
+.env
+.env.*
+**/target
+log
+tmp
+public/cached_pages
+vendor/cache
+**/__pycache__

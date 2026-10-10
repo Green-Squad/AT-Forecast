@@ -25,3 +25,7 @@
 /public/cached_pages/*
 /public/cached_pages/shelters/*
 !/public/cached_pages/shelters/.gitkeep
+
+# Rust build outputs and generated benchmark results
+/rust/target/
+/benchmark-results/
