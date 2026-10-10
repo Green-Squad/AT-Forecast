@@ -3,10 +3,14 @@ use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use serde_json::{Value, json};
-use sqlx::{FromRow, PgPool};
+use sqlx::{
+    FromRow, PgPool, Postgres,
+    pool::PoolConnection,
+    postgres::{PgArguments, PgRow},
+    query::QueryAs,
+};
 use std::{
     collections::HashMap,
-    future::Future,
     time::{Duration, Instant},
 };
 
@@ -152,6 +156,7 @@ pub struct Metrics {
 }
 pub struct Db {
     pool: PgPool,
+    connection: Option<PoolConnection<Postgres>>,
     timeout: Duration,
     pub metrics: Metrics,
     // Rails' request query cache already avoids the identical repeated neighbor SQL in the ERB.
@@ -159,14 +164,14 @@ pub struct Db {
 }
 macro_rules! rows {
     ($db:expr,$query:expr) => {{
-        let pool = $db.pool.clone();
-        $db.run($query.fetch_all(&pool)).await?
+        $db.run($query).await?
     }};
 }
 impl Db {
     pub fn new(pool: PgPool, timeout: Duration) -> Self {
         Self {
             pool,
+            connection: None,
             timeout,
             metrics: Metrics::default(),
             neighbors: HashMap::new(),
@@ -174,11 +179,23 @@ impl Db {
     }
     async fn run<T>(
         &mut self,
-        query: impl Future<Output = Result<T, sqlx::Error>>,
-    ) -> Result<T, Error> {
+        query: QueryAs<'_, Postgres, T, PgArguments>,
+    ) -> Result<Vec<T>, Error>
+    where
+        T: for<'r> FromRow<'r, PgRow> + Send + Unpin,
+    {
         self.metrics.queries += 1;
         let start = Instant::now();
-        let result = tokio::time::timeout(self.timeout, query).await;
+        let result = tokio::time::timeout(self.timeout, async {
+            // Keep one connection until this request's Db is dropped. Acquiring it
+            // lazily preserves database-free cache hits and static responses.
+            if self.connection.is_none() {
+                self.connection = Some(self.pool.acquire().await?);
+            }
+            let connection = self.connection.as_mut().expect("connection acquired");
+            query.fetch_all(&mut **connection).await
+        })
+        .await;
         self.metrics.db_ms += start.elapsed().as_secs_f64() * 1000.0;
         result
             .map_err(|_| Error::Unavailable)?
@@ -373,5 +390,33 @@ mod tests {
         assert_eq!(category("scattered clouds"), "clouds");
         assert_eq!((-3i64).div_euclid(2), -2);
         assert_eq!(haversine(40.0, -75.0, 40.0, -75.0), 0.0);
+    }
+    #[tokio::test]
+    async fn request_reuses_connection_and_returns_it_on_drop() {
+        if std::env::var("AT_FORECAST_TEST_DATABASE").as_deref() != Ok("isolated") {
+            eprintln!("SKIPPED PostgreSQL connection lifecycle test: isolated fixture required");
+            return;
+        }
+        let cfg = Config::from_env().unwrap();
+        let configured = crate::pool_from_env(&cfg).await.unwrap();
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .max_connections(1)
+            .connect_lazy_with((*configured.connect_options()).clone());
+        configured.close().await;
+        let mut db = Db::new(pool.clone(), cfg.query_timeout);
+        assert_eq!(pool.size(), 0);
+        assert_eq!(db.shelter(1).await.unwrap().id, 1);
+        assert_eq!(pool.size(), 1);
+        assert!(pool.try_acquire().is_none());
+        // A second checkout would time out with the sole connection held.
+        assert_eq!(db.shelter(2).await.unwrap().id, 2);
+        assert!(pool.try_acquire().is_none());
+        drop(db);
+        let returned = tokio::time::timeout(Duration::from_secs(1), pool.acquire())
+            .await
+            .unwrap()
+            .unwrap();
+        drop(returned);
+        pool.close().await;
     }
 }

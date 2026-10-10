@@ -67,7 +67,7 @@ The URL above is a placeholder; do not commit your real credentials. SQLx compil
 | `ENABLE_ANALYTICS` | `true`; set `false` for tests/comparisons |
 | `RUST_LOG` | application info, SQLx off |
 
-The pool requests `default_transaction_read_only=on`. Also use a SELECT-only database role; only the five reader tables require SELECT. `/healthz` is a lightweight process check, not database readiness. The lazy pool connects on the first data request, which must be included when measuring a data cold start.
+Each database-backed request lazily acquires one pooled connection and reuses it for all of its SQL statements. The connection is returned when the request finishes; database-free cache hits and static responses acquire none. SQLx health checks remain enabled at checkout. Reported database time includes the first connection acquisition plus query execution and result transfer.\n\nThe pool requests `default_transaction_read_only=on`. Also use a SELECT-only database role; only the five reader tables require SELECT. `/healthz` is a lightweight process check, not database readiness. The lazy pool connects on the first data request, which must be included when measuring a data cold start.
 
 ## Isolated validation
 
