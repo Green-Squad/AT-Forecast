@@ -14,6 +14,7 @@ spec:
         autoscaling.knative.dev/maxScale: '1'
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/cpu-throttling: 'true'
+        run.googleapis.com/startup-cpu-boost: 'false'
         run.googleapis.com/container-dependencies: '{"web":["database"]}'
     spec:
       serviceAccountName: hand-forged-runtime@at-forecast.iam.gserviceaccount.com
@@ -32,9 +33,10 @@ spec:
         resources:
           limits:
             cpu: '1'
-            memory: 512Mi
+            memory: 256Mi
         startupProbe:
-          tcpSocket:
+          httpGet:
+            path: /
             port: 8080
           periodSeconds: 2
           failureThreshold: 120

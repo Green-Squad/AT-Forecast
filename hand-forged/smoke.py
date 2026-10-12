@@ -18,6 +18,8 @@ for _ in range(180):
   _,home=request('/');break
  except Exception:time.sleep(1)
 else:raise AssertionError('Startup failed')
+Path('hand-forged/test-results').mkdir(exist_ok=True)
+Path('hand-forged/test-results/startup.json').write_text(json.dumps({'startup_seconds':round(time.time()-float(os.environ.get('HAND_FORGED_STARTED_AT',time.time())),3)}))
 assert 'Hand-Forged Edition' in home and 'Sample forecasts' in home and 'Georgia' in home
 _,body=request('/index.json?api_key=hand-forged-demo&include_shelters=true');data=json.loads(body)
 assert len(data)==13 and sum(len(s['shelters']) for s in data)==281
@@ -41,6 +43,16 @@ request(path,{'_method':'delete','authenticity_token':csrf(html)})
 _,html=request('/admin/states/'+state);request('/admin/states/'+state,{'_method':'delete','authenticity_token':csrf(html)})
 _,html=request('/admin/shelters/1');request('/admin/shelters/1/refresh_demo_weather',{'authenticity_token':csrf(html)})
 _,body=request('/shelters/1.json?api_key=hand-forged-demo');fresh=json.loads(body)[0]['daily_weather'];assert len(fresh)==7 and fresh[0]['daily_weather_id']!=weather[0]['daily_weather_id']
+# Exercise the original Devise reset with local delivery for a temporary synthetic admin.
+_,html=request('/admin/admin_users/new');token=csrf(html)
+path,html=request('/admin/admin_users',{'authenticity_token':token,'admin_user[email]':'mailcheck@handforged.invalid','admin_user[password]':'HandForgedMail123!','admin_user[password_confirmation]':'HandForgedMail123!','commit':'Create Admin user'})
+assert re.fullmatch('/admin/admin_users/[0-9]+',path),path
+mail_user=path.rsplit('/',1)[1]
+_,html=request('/admin');request('/admin/logout',{'_method':'delete','authenticity_token':csrf(html)})
+_,html=request('/admin/password/new');request('/admin/password',{'authenticity_token':csrf(html),'admin_user[email]':'mailcheck@handforged.invalid','commit':'Reset My Password'})
+_,inbox=request('/hand-forged/mail');assert 'Captured demo email' in inbox
+_,html=request('/admin/login');request('/admin/login',{'authenticity_token':csrf(html),'admin_user[email]':'admin@handforged.invalid','admin_user[password]':'HandForgedDemo!','commit':'Login'})
+_,html=request('/admin/admin_users/'+mail_user);request('/admin/admin_users/'+mail_user,{'_method':'delete','authenticity_token':csrf(html)})
 Path('hand-forged/test-results').mkdir(exist_ok=True)
 Path('hand-forged/test-results/public.html').write_text(home)
 Path('hand-forged/test-results/shelter.json').write_text(body)

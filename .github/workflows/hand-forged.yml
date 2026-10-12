@@ -16,6 +16,10 @@ jobs:
       run: |
         docker build -t hand-forged-db -f hand-forged/Database.Dockerfile .
         docker build -t hand-forged-web .
+    - name: Prepare focused original-browser checks
+      run: |
+        npm install --no-save playwright@1.64.0
+        npx playwright install --with-deps chromium
     - name: Startup, interactive flows, measurements and fresh-instance reset
       run: bash hand-forged/check-container.sh
     - uses: actions/upload-artifact@v4

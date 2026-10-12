@@ -1,6 +1,6 @@
 # Hand-Forged Edition
 
-Original Rails 5.0.7.1/Ruby 2.7 application, original locked gems, layouts and controllers. `HAND_FORGED_DEMO=true` isolates the application from production and replaces only external weather responses with deterministic local fixtures. The original Kelvin/wind transformations and database-update methods remain in `Shelter`. Demo-only ActiveAdmin parameter lists allow its existing CRUD forms to operate, and its shelter page has a sample refresh action. Email is captured locally; analytics is disabled.
+Original Rails 5.0.7.1/Ruby 2.7 application, original locked gems, layouts and controllers. `HAND_FORGED_DEMO=true` isolates the application from production and replaces only external weather responses with deterministic local fixtures. The original Kelvin/wind transformations and database-update methods remain in `Shelter`. Demo-only ActiveAdmin parameter lists allow its existing CRUD forms to operate, and its shelter page has a sample refresh action. Email is captured in a session-scoped local inbox, using inline demo delivery rather than background work on a throttled instance; analytics is disabled.
 
 `admin@handforged.invalid` / `HandForgedDemo!` is the synthetic administrator. The original JSON endpoints accept the synthetic key `hand-forged-demo`. Forecasts are sample data and must not be used for hiking decisions.
 

@@ -9,4 +9,13 @@ unset OPEN_WEATHER_MAP_API_KEY GOOGLE_MAPS_API_KEY
 bundle exec ruby hand-forged/wait_for_database.rb
 rm -rf public/cached_pages/*
 mkdir -p public/cached_pages/shelters
-exec bundle exec rails server -b 0.0.0.0 -p "${PORT:-8080}"
+bundle exec rails server -b 0.0.0.0 -p "${PORT:-8080}" &
+web_pid=$!
+shutdown() {
+ trap - TERM INT
+ kill -INT "$web_pid" 2>/dev/null || true
+ wait "$web_pid" || true
+ exit 0
+}
+trap shutdown TERM INT
+wait "$web_pid"
