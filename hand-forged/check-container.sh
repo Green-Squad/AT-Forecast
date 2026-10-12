@@ -2,7 +2,7 @@
 set -euo pipefail
 mkdir -p hand-forged/test-results
 start=$(date +%s)
-cleanup() { docker rm -f hf-web hf-database >/dev/null 2>&1 || true; }
+cleanup() { docker logs hf-web > hand-forged/test-results/application.log 2>&1 || true; docker logs hf-database > hand-forged/test-results/database.log 2>&1 || true; docker rm -f hf-web hf-database >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 launch() {
  docker run -d --name hf-database --memory=256m --cpus=1 --tmpfs /var/lib/postgresql/data:size=192m -p 127.0.0.1:8080:8080 hand-forged-db

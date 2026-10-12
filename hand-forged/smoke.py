@@ -40,7 +40,7 @@ assert re.fullmatch('/admin/shelters/[0-9]+',path),path
 request(path,{'_method':'delete','authenticity_token':csrf(html)})
 _,html=request('/admin/states/'+state);request('/admin/states/'+state,{'_method':'delete','authenticity_token':csrf(html)})
 _,html=request('/admin/shelters/1');request('/admin/shelters/1/refresh_demo_weather',{'authenticity_token':csrf(html)})
-_,body=request('/shelters/1.json?api_key=hand-forged-demo');fresh=json.loads(body)[0]['daily_weather'];assert len(fresh)==7 and fresh[0]['high']!=50+1%15
+_,body=request('/shelters/1.json?api_key=hand-forged-demo');fresh=json.loads(body)[0]['daily_weather'];assert len(fresh)==7 and fresh[0]['daily_weather_id']!=weather[0]['daily_weather_id']
 Path('hand-forged/test-results').mkdir(exist_ok=True)
 Path('hand-forged/test-results/public.html').write_text(home)
 Path('hand-forged/test-results/shelter.json').write_text(body)
