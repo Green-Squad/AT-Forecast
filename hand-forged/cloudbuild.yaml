@@ -1,0 +1,31 @@
+steps:
+- name: ubuntu
+  id: branch-guard
+  entrypoint: bash
+  args: ['-ec', 'test "$BRANCH_NAME" = hand-forged; grep -q "^  name: atforecast-hand-forged$" hand-forged/service.yaml']
+- name: gcr.io/cloud-builders/docker
+  id: database
+  args: ['build', '-f', 'hand-forged/Database.Dockerfile', '-t', 'us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/database:$COMMIT_SHA', '.']
+- name: gcr.io/cloud-builders/docker
+  id: application
+  args: ['build', '-t', 'us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/application:$COMMIT_SHA', '.']
+- name: gcr.io/cloud-builders/docker
+  args: ['push', 'us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/database:$COMMIT_SHA']
+- name: gcr.io/cloud-builders/docker
+  args: ['push', 'us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/application:$COMMIT_SHA']
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+  id: deploy-only-demo
+  entrypoint: bash
+  args:
+  - -ec
+  - |
+    test "$BRANCH_NAME" = hand-forged
+    grep -q '^  name: atforecast-hand-forged$' hand-forged/service.yaml
+    sed -e 's|__APP_IMAGE__|us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/application:$COMMIT_SHA|' -e 's|__DB_IMAGE__|us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/database:$COMMIT_SHA|' hand-forged/service.yaml > /tmp/service.yaml
+    gcloud run services replace /tmp/service.yaml --project=at-forecast --region=us-east4 --quiet
+images:
+- us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/database:$COMMIT_SHA
+- us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/application:$COMMIT_SHA
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1200s

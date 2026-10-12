@@ -1,0 +1,7 @@
+{
+  "states": 13,
+  "shelters": 281,
+  "daily_forecasts": 1967,
+  "hourly_forecasts": 15736,
+  "source": "Original db/schema.rb and lib/seeds/shelters.csv; entirely synthetic weather and admin"
+}

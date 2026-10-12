@@ -1,28 +1,17 @@
-# Use an official Ruby image as a parent image
-FROM ruby:2.7
-
-# Set the working directory in the container
+FROM ruby:2.7.8-slim-bullseye@sha256:39f68389fd3fe8c04ed896b10cc90ba4553a42e555ae18b37b41ea8c3ce965fd AS build
 WORKDIR /usr/src/app
-
-# Copy the Gemfile and Gemfile.lock into the container
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential libpq-dev libxml2-dev libxslt1-dev nodejs git && rm -rf /var/lib/apt/lists/*
 COPY Gemfile Gemfile.lock ./
-
-# Not sure why we need to do this on Google Cloud
-RUN gem install bundler -v '1.14.6'
-
-# Install any needed gems specified in Gemfile
-RUN bundle install
-
-# Copy the rest of your app's source code from your host to your container
+RUN gem install bundler -v 1.14.6 --no-document && bundle config build.nokogiri --use-system-libraries && bundle install --without development test
 COPY . .
-
-# Add metadata to the image to describe which port the container is listening on at runtime
-EXPOSE 3000
-
-# Precompile assets
-# Set RAILS_ENV and SECRET_KEY_BASE as these might be required for asset compilation
-ENV RAILS_ENV=production SECRET_KEY_BASE=temporary_key
-RUN rails assets:precompile
-
-# Start the main process (in this case, Puma server)
-CMD ["rails", "server", "-b", "0.0.0.0"]
+RUN HAND_FORGED_DEMO=true RAILS_ENV=production SECRET_KEY_BASE=build-only-hand-forged-key DEVISE_SECRET_KEY=build-only-devise-key bundle exec rake assets:precompile
+FROM ruby:2.7.8-slim-bullseye@sha256:39f68389fd3fe8c04ed896b10cc90ba4553a42e555ae18b37b41ea8c3ce965fd
+RUN apt-get update && apt-get install -y --no-install-recommends libpq5 libxml2 libxslt1.1 curl openssl && rm -rf /var/lib/apt/lists/*
+WORKDIR /usr/src/app
+COPY --from=build /usr/local/bundle /usr/local/bundle
+COPY --from=build /usr/src/app /usr/src/app
+RUN mkdir -p public/cached_pages/shelters tmp/pids log && useradd --uid 10001 --create-home demo && chown -R demo:demo tmp log public/cached_pages
+ENV RAILS_ENV=production RAILS_SERVE_STATIC_FILES=true RAILS_LOG_TO_STDOUT=true TZ=America/New_York HAND_FORGED_DEMO=true PORT=8080
+USER demo
+EXPOSE 8080
+ENTRYPOINT ["sh","hand-forged/start.sh"]

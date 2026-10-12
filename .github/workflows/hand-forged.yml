@@ -1,0 +1,25 @@
+name: Hand-Forged validation
+on:
+  push:
+    branches: [hand-forged]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  disposable-demo:
+    if: github.ref == 'refs/heads/hand-forged'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build original Rails application and private PostgreSQL sidecar
+      run: |
+        docker build -t hand-forged-db -f hand-forged/Database.Dockerfile .
+        docker build -t hand-forged-web .
+    - name: Startup, interactive flows, measurements and fresh-instance reset
+      run: bash hand-forged/check-container.sh
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: hand-forged-validation
+        path: hand-forged/test-results

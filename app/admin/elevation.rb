@@ -1,4 +1,5 @@
 ActiveAdmin.register Elevation do
+  permit_params :long, :latt, :elevation if ENV['HAND_FORGED_DEMO'] == 'true'
 
 # See permitted parameters documentation:
 # https://github.com/activeadmin/activeadmin/blob/master/docs/2-resource-customization.md#setting-up-strong-parameters

@@ -1,0 +1,59 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: atforecast-hand-forged
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/minScale: '0'
+    run.googleapis.com/maxScale: '1'
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: '0'
+        autoscaling.knative.dev/maxScale: '1'
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: 'true'
+        run.googleapis.com/container-dependencies: '{"web":["database"]}'
+    spec:
+      serviceAccountName: hand-forged-runtime@at-forecast.iam.gserviceaccount.com
+      containerConcurrency: 8
+      timeoutSeconds: 120
+      containers:
+      - name: web
+        image: __APP_IMAGE__
+        ports:
+        - containerPort: 8080
+        env:
+        - name: HAND_FORGED_DEMO
+          value: 'true'
+        - name: HAND_FORGED_HOST
+          value: handforged.atforecast.app
+        resources:
+          limits:
+            cpu: '1'
+            memory: 512Mi
+        startupProbe:
+          tcpSocket:
+            port: 8080
+          periodSeconds: 2
+          failureThreshold: 120
+      - name: database
+        image: __DB_IMAGE__
+        resources:
+          limits:
+            cpu: '1'
+            memory: 256Mi
+        startupProbe:
+          tcpSocket:
+            port: 5432
+          periodSeconds: 2
+          failureThreshold: 60
+        volumeMounts:
+        - name: disposable-database
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: disposable-database
+        emptyDir:
+          medium: Memory
+          sizeLimit: 192Mi
