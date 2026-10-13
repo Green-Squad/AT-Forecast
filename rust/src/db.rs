@@ -1,20 +1,18 @@
+use crate::remote::{Pool, Session, integer, text};
 use crate::{Config, Error};
 use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Tz;
+use libsql::Value as SqlValue;
+use serde::Deserialize;
 use serde_json::{Value, json};
-use sqlx::{
-    FromRow, PgPool, Postgres,
-    pool::PoolConnection,
-    postgres::{PgArguments, PgRow},
-    query::QueryAs,
-};
+
 use std::{
     collections::HashMap,
     time::{Duration, Instant},
 };
 
-#[derive(Clone, Debug, FromRow)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Shelter {
     pub id: i32,
     pub name: Option<String>,
@@ -48,12 +46,12 @@ pub fn decimal_text(d: &BigDecimal) -> String {
     let s = d.normalized().to_plain_string();
     if s.contains('.') { s } else { format!("{s}.0") }
 }
-#[derive(FromRow)]
+#[derive(Deserialize)]
 struct State {
     id: i32,
     name: String,
 }
-#[derive(FromRow)]
+#[derive(Deserialize)]
 struct Average {
     state_id: i32,
     high: i64,
@@ -67,21 +65,24 @@ pub struct StateView {
     pub low: i64,
     pub shelters: Vec<Shelter>,
 }
-#[derive(Debug, FromRow)]
+#[derive(Debug, Deserialize)]
 pub struct Daily {
     pub id: i32,
+    #[serde(deserialize_with = "crate::remote::datetime")]
     pub weather_date: NaiveDateTime,
     pub high: i32,
     pub low: i32,
     pub description: String,
     pub wind: Option<String>,
     pub shelter_id: i32,
+    #[serde(deserialize_with = "crate::remote::datetime")]
     pub created_at: NaiveDateTime,
 }
-#[derive(Clone, Debug, FromRow)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Hourly {
     pub shelter_id: i32,
     pub id: i32,
+    #[serde(deserialize_with = "crate::remote::datetime")]
     pub date: NaiveDateTime,
     pub temp: Option<i32>,
     pub description: Option<String>,
@@ -158,18 +159,15 @@ pub struct Metrics {
     pub query_cache_hits: u32,
 }
 pub struct Db {
-    pool: PgPool,
-    connection: Option<PoolConnection<Postgres>>,
+    pool: Pool,
+    connection: Option<Session>,
     timeout: Duration,
     pub metrics: Metrics,
     // Rails' request query cache already avoids the identical repeated neighbor SQL in the ERB.
     neighbors: HashMap<(i32, bool), Option<Shelter>>,
 }
-macro_rules! rows {
-    ($db:expr,$query:expr) => {{ $db.run($query).await? }};
-}
 impl Db {
-    pub fn new(pool: PgPool, timeout: Duration) -> Self {
+    pub fn new(pool: Pool, timeout: Duration) -> Self {
         Self {
             pool,
             connection: None,
@@ -178,23 +176,22 @@ impl Db {
             neighbors: HashMap::new(),
         }
     }
-    async fn run<T>(
+    async fn run<T: serde::de::DeserializeOwned>(
         &mut self,
-        query: QueryAs<'_, Postgres, T, PgArguments>,
-    ) -> Result<Vec<T>, Error>
-    where
-        T: for<'r> FromRow<'r, PgRow> + Send + Unpin,
-    {
+        sql: &str,
+        args: Vec<SqlValue>,
+    ) -> Result<Vec<T>, Error> {
         self.metrics.queries += 1;
         let start = Instant::now();
         let result = tokio::time::timeout(self.timeout, async {
-            // Keep one connection until this request's Db is dropped. Acquiring it
-            // lazily preserves database-free cache hits and static responses.
             if self.connection.is_none() {
-                self.connection = Some(self.pool.acquire().await?);
+                self.connection = Some(self.pool.read().await?);
             }
-            let connection = self.connection.as_mut().expect("connection acquired");
-            query.fetch_all(&mut **connection).await
+            self.connection
+                .as_ref()
+                .ok_or(crate::remote::Unavailable)?
+                .rows(sql, args)
+                .await
         })
         .await;
         self.metrics.db_ms += start.elapsed().as_secs_f64() * 1000.0;
@@ -203,18 +200,19 @@ impl Db {
             .map_err(|_| Error::Unavailable)
     }
     pub async fn auth(&mut self, key: Option<&str>) -> Result<bool, Error> {
-        let keys: Vec<(i32,)> = rows!(
-            self,
-            sqlx::query_as("SELECT id FROM keys WHERE key = $1 LIMIT 1").bind(key)
-        );
+        let keys: Vec<(i32,)> = self
+            .run(
+                "SELECT id FROM keys WHERE key = ? LIMIT 1",
+                vec![key.map(text).unwrap_or(SqlValue::Null)],
+            )
+            .await?;
         Ok(!keys.is_empty())
     }
     pub async fn states(&mut self, include: bool, cfg: &Config) -> Result<Vec<StateView>, Error> {
-        let states: Vec<State> = rows!(self, sqlx::query_as("SELECT * FROM states"));
+        let states: Vec<State> = self.run("SELECT * FROM states", vec![]).await?;
         if states.is_empty() {
             return Ok(Vec::new());
         }
-        let state_ids: Vec<i32> = states.iter().map(|s| s.id).collect();
         let now = Utc::now().with_timezone(&cfg.database_timezone);
         let cutoff = now
             .date_naive()
@@ -222,32 +220,14 @@ impl Db {
             .unwrap();
         // FLOOR preserves Ruby's integer division, including negative averages.
         // A null temperature still fails decoding instead of silently changing the average.
-        let averages: Vec<Average> = rows!(
-            self,
-            sqlx::query_as(
-                r#"SELECT shelters.state_id,
-                   (CASE WHEN COUNT(weathers.high) = COUNT(*)
-                         THEN FLOOR(SUM(weathers.high)::numeric / COUNT(*)) END)::bigint AS high,
-                   (CASE WHEN COUNT(weathers.low) = COUNT(*)
-                         THEN FLOOR(SUM(weathers.low)::numeric / COUNT(*)) END)::bigint AS low
-                   FROM weathers INNER JOIN shelters ON shelters.id = weathers.shelter_id
-                   WHERE shelters.state_id = ANY($1) AND weathers.weather_date <= $2
-                   GROUP BY shelters.state_id"#
-            )
-            .bind(&state_ids)
-            .bind(cutoff)
-        );
+        let averages: Vec<Average> = self.run(
+            "SELECT shelters.state_id, CASE WHEN COUNT(weathers.high)=COUNT(*) THEN CAST(FLOOR(1.0*SUM(weathers.high)/COUNT(*)) AS INTEGER) END high, CASE WHEN COUNT(weathers.low)=COUNT(*) THEN CAST(FLOOR(1.0*SUM(weathers.low)/COUNT(*)) AS INTEGER) END low FROM weathers INNER JOIN shelters ON shelters.id=weathers.shelter_id WHERE shelters.state_id IN (SELECT id FROM states) AND weathers.weather_date<=? GROUP BY shelters.state_id",
+            vec![text(cutoff.format("%Y-%m-%d %H:%M:%S%.6f"))]).await?;
         let mut averages: HashMap<i32, Average> =
             averages.into_iter().map(|a| (a.state_id, a)).collect();
         let mut shelters_by_state: HashMap<i32, Vec<Shelter>> = HashMap::new();
         if include {
-            let shelters: Vec<Shelter> = rows!(
-                self,
-                sqlx::query_as(
-                    "SELECT * FROM shelters WHERE state_id = ANY($1) ORDER BY mileage ASC"
-                )
-                .bind(&state_ids)
-            );
+            let shelters: Vec<Shelter> = self.run("SELECT * FROM shelters WHERE state_id IN (SELECT id FROM states) ORDER BY CAST(mileage AS REAL) ASC", vec![]).await?;
             for shelter in shelters {
                 if let Some(state_id) = shelter.state_id {
                     shelters_by_state.entry(state_id).or_default().push(shelter);
@@ -270,10 +250,12 @@ impl Db {
             .collect())
     }
     pub async fn shelter(&mut self, id: i32) -> Result<Shelter, Error> {
-        let mut rows: Vec<Shelter> = rows!(
-            self,
-            sqlx::query_as("SELECT * FROM shelters WHERE id = $1 LIMIT 1").bind(id)
-        );
+        let mut rows: Vec<Shelter> = self
+            .run(
+                "SELECT * FROM shelters WHERE id = ? LIMIT 1",
+                vec![integer(id)],
+            )
+            .await?;
         rows.pop().ok_or(Error::NotFound)
     }
     pub async fn neighbor(&mut self, s: &Shelter, next: bool) -> Result<Option<Shelter>, Error> {
@@ -282,25 +264,21 @@ impl Db {
             return Ok(cached.clone());
         }
         let sql = if next {
-            "SELECT * FROM shelters WHERE mileage > $1 ORDER BY mileage ASC LIMIT 1"
+            "SELECT * FROM shelters WHERE CAST(mileage AS REAL) > CAST(? AS REAL) ORDER BY CAST(mileage AS REAL) ASC LIMIT 1"
         } else {
-            "SELECT * FROM shelters WHERE mileage < $1 ORDER BY mileage DESC LIMIT 1"
+            "SELECT * FROM shelters WHERE CAST(mileage AS REAL) < CAST(? AS REAL) ORDER BY CAST(mileage AS REAL) DESC LIMIT 1"
         };
-        let mut rows: Vec<Shelter> = rows!(self, sqlx::query_as(sql).bind(&s.mileage));
+        let mut rows: Vec<Shelter> = self.run(sql, vec![text(&s.mileage)]).await?;
         let found = rows.pop();
         self.neighbors.insert((s.id, next), found.clone());
         Ok(found)
     }
     pub async fn nearest_mile(&mut self, mile: BigDecimal) -> Result<Shelter, Error> {
-        let mut rows: Vec<Shelter> = rows!(
-            self,
-            sqlx::query_as("SELECT * FROM shelters ORDER BY ABS(mileage - $1) ASC LIMIT 1")
-                .bind(mile)
-        );
+        let mut rows: Vec<Shelter> = self.run("SELECT * FROM shelters ORDER BY ABS(CAST(mileage AS REAL) - CAST(? AS REAL)) ASC LIMIT 1", vec![text(mile)]).await?;
         rows.pop().ok_or(Error::NotFound)
     }
     pub async fn nearest_coords(&mut self, lat: f64, lon: f64) -> Result<Shelter, Error> {
-        let shelters: Vec<Shelter> = rows!(self, sqlx::query_as("SELECT * FROM shelters"));
+        let shelters: Vec<Shelter> = self.run("SELECT * FROM shelters", vec![]).await?;
         let mut best = None;
         let mut smallest = f64::MAX;
         for s in shelters {
@@ -323,12 +301,7 @@ impl Db {
         distance: BigDecimal,
     ) -> Result<Vec<Shelter>, Error> {
         // No ORDER BY or LIMIT: preserve the original distance endpoint's complete, unordered result.
-        Ok(rows!(
-            self,
-            sqlx::query_as("SELECT * FROM shelters WHERE mileage <= $1 AND mileage > $2")
-                .bind(&s.mileage + distance)
-                .bind(&s.mileage)
-        ))
+        self.run("SELECT * FROM shelters WHERE CAST(mileage AS REAL) <= CAST(? AS REAL) AND CAST(mileage AS REAL) > CAST(? AS REAL)", vec![text(&s.mileage + distance), text(&s.mileage)]).await
     }
     pub async fn days(&mut self, s: &Shelter, cfg: &Config) -> Result<Vec<DayView>, Error> {
         Ok(self
@@ -345,13 +318,8 @@ impl Db {
         if shelter_ids.is_empty() {
             return Ok(HashMap::new());
         }
-        let daily: Vec<Daily> = rows!(
-            self,
-            sqlx::query_as(
-                "SELECT * FROM weathers WHERE shelter_id = ANY($1) ORDER BY weather_date ASC"
-            )
-            .bind(shelter_ids)
-        );
+        let ids = serde_json::to_string(shelter_ids).map_err(|_| Error::Unavailable)?;
+        let daily: Vec<Daily> = self.run("SELECT * FROM weathers WHERE shelter_id IN (SELECT value FROM json_each(?)) ORDER BY weather_date ASC", vec![text(ids)]).await?;
         if daily.is_empty() {
             return Ok(HashMap::new());
         }
@@ -362,15 +330,8 @@ impl Db {
         let start = windows.iter().map(|(start, _)| *start).min().unwrap();
         let end = windows.iter().map(|(_, end)| *end).max().unwrap();
         let forecast_ids: Vec<i32> = daily.iter().map(|d| d.shelter_id).collect();
-        let hourly: Vec<Hourly> = rows!(
-            self,
-            sqlx::query_as(
-                "SELECT * FROM hourly_weathers WHERE shelter_id = ANY($1) AND date BETWEEN $2 AND $3 ORDER BY date ASC"
-            )
-            .bind(&forecast_ids)
-            .bind(start)
-            .bind(end)
-        );
+        let ids = serde_json::to_string(&forecast_ids).map_err(|_| Error::Unavailable)?;
+        let hourly: Vec<Hourly> = self.run("SELECT * FROM hourly_weathers WHERE shelter_id IN (SELECT value FROM json_each(?)) AND date BETWEEN ? AND ? ORDER BY date ASC", vec![text(ids), text(start.format("%Y-%m-%d %H:%M:%S%.6f")), text(end.format("%Y-%m-%d %H:%M:%S%.6f"))]).await?;
         let mut hourly_by_shelter: HashMap<i32, Vec<Hourly>> = HashMap::new();
         for h in hourly {
             hourly_by_shelter.entry(h.shelter_id).or_default().push(h);
@@ -462,33 +423,5 @@ mod tests {
                 hours
             );
         }
-    }
-    #[tokio::test]
-    async fn request_reuses_connection_and_returns_it_on_drop() {
-        if std::env::var("AT_FORECAST_TEST_DATABASE").as_deref() != Ok("isolated") {
-            eprintln!("SKIPPED PostgreSQL connection lifecycle test: isolated fixture required");
-            return;
-        }
-        let cfg = Config::from_env().unwrap();
-        let configured = crate::pool_from_env(&cfg).await.unwrap();
-        let pool = sqlx::postgres::PgPoolOptions::new()
-            .max_connections(1)
-            .connect_lazy_with((*configured.connect_options()).clone());
-        configured.close().await;
-        let mut db = Db::new(pool.clone(), cfg.query_timeout);
-        assert_eq!(pool.size(), 0);
-        assert_eq!(db.shelter(1).await.unwrap().id, 1);
-        assert_eq!(pool.size(), 1);
-        assert!(pool.try_acquire().is_none());
-        // A second checkout would time out with the sole connection held.
-        assert_eq!(db.shelter(2).await.unwrap().id, 2);
-        assert!(pool.try_acquire().is_none());
-        drop(db);
-        let returned = tokio::time::timeout(Duration::from_secs(1), pool.acquire())
-            .await
-            .unwrap()
-            .unwrap();
-        drop(returned);
-        pool.close().await;
     }
 }

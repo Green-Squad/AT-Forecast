@@ -1,0 +1,75 @@
+{
+  "generation": 2,
+  "engine": "postgres",
+  "schema_sha256": "7a86b952c6ec826816fd32de32e8bac94c8c4432f50b5b1288a0bad654d61f09",
+  "tables": [
+    {
+      "table": "active_admin_comments",
+      "source_rows": 0,
+      "destination_rows": 0,
+      "normalized_checksums_match": true
+    },
+    {
+      "table": "admin_users",
+      "source_rows": 1,
+      "destination_rows": 1,
+      "normalized_checksums_match": true
+    },
+    {
+      "table": "ar_internal_metadata",
+      "source_rows": 1,
+      "destination_rows": 1,
+      "normalized_checksums_match": true
+    },
+    {
+      "table": "elevations",
+      "source_rows": 0,
+      "destination_rows": 0,
+      "normalized_checksums_match": true
+    },
+    {
+      "table": "hourly_weathers",
+      "source_rows": 11160,
+      "destination_rows": 11160,
+      "normalized_checksums_match": true
+    },
+    {
+      "table": "keys",
+      "source_rows": 1,
+      "destination_rows": 1,
+      "normalized_checksums_match": true
+    },
+    {
+      "table": "schema_migrations",
+      "source_rows": 13,
+      "destination_rows": 13,
+      "normalized_checksums_match": true
+    },
+    {
+      "table": "shelters",
+      "source_rows": 279,
+      "destination_rows": 279,
+      "normalized_checksums_match": true
+    },
+    {
+      "table": "states",
+      "source_rows": 13,
+      "destination_rows": 13,
+      "normalized_checksums_match": true
+    },
+    {
+      "table": "weathers",
+      "source_rows": 1953,
+      "destination_rows": 1953,
+      "normalized_checksums_match": true
+    }
+  ],
+  "relationships": "passed",
+  "integrity": "passed",
+  "duration_seconds": 21.893,
+  "http_requests": 133,
+  "rows_read": 431654,
+  "rows_written": 42459,
+  "source_snapshot_utc": "2026-10-13T21:41:42.616839+00:00",
+  "published": true
+}

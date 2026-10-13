@@ -1,0 +1,115 @@
+steps:
+- name: bash
+  args:
+  - -ceu
+  - test "$PROJECT_ID" = "at-forecast"; test "$BRANCH_NAME" = rust
+- name: gcr.io/cloud-builders/docker
+  entrypoint: bash
+  args:
+  - -ceu
+  - "docker run -d --network cloudbuild --name at-fixture-pg -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=fixture-admin-only -e POSTGRES_DB=at_forecast_test -p\
+    \ 5432:5432 postgres:17\ndocker run -d --network cloudbuild --name at-fixture-libsql -p 8083:8080 ghcr.io/tursodatabase/libsql-server@sha256:6dd3eb276d9d3604e4a48ac4a999a2e267814732d57d7e94c04ba71482333a67\n\
+    for attempt in $$(seq 1 60); do\n  if docker exec at-fixture-pg pg_isready -h 127.0.0.1 -U postgres -d at_forecast_test; then break; fi\n  sleep 1\ndone\ndocker exec -i at-fixture-pg\
+    \ psql -U postgres -d at_forecast_test -v ON_ERROR_STOP=1 < rust/tests/fixture.sql\n\ndocker run -d --network cloudbuild --name fixture-sync ghcr.io/tursodatabase/libsql-server@sha256:6dd3eb276d9d3604e4a48ac4a999a2e267814732d57d7e94c04ba71482333a67\n"
+- name: rust:1.99-slim-trixie
+  entrypoint: bash
+  args:
+  - -ceu
+  - 'apt-get update -qq
+
+    apt-get install -y --no-install-recommends python3 python3-pip ca-certificates
+
+    python3 -m pip install --break-system-packages pymysql requests ''psycopg[binary]''
+
+    rustup component add rustfmt clippy
+
+    export TEST_POSTGRES_HOST=at-fixture-pg
+
+    export TURSO_TEST_DATABASE=isolated AT_FORECAST_TEST_DATABASE=isolated CACHE_MODE=off ENABLE_ANALYTICS=false
+
+    export TURSO_DATABASE_URL=http://at-fixture-libsql:8080 TURSO_AUTH_TOKEN=
+
+    python3 rust/migration/fixture_copy.py --engine postgres --source-database at_forecast_test --target "$$TURSO_DATABASE_URL"
+
+    cargo fmt --manifest-path rust/Cargo.toml --check
+
+    cargo clippy --manifest-path rust/Cargo.toml --locked --all-targets -- -D warnings
+
+    cargo test --manifest-path rust/Cargo.toml --locked -- --nocapture
+
+
+    SYNC_TEST_URL=http://fixture-sync:8080 python3 -m unittest discover -s rust/migration -p "test_*.py" -v
+
+    '
+- name: gcr.io/cloud-builders/docker
+  args:
+  - build
+  - -f
+  - Dockerfile
+  - -t
+  - gcr.io/$PROJECT_ID/at-forecast-rust:$COMMIT_SHA
+  - .
+- name: gcr.io/cloud-builders/docker
+  args:
+  - push
+  - gcr.io/$PROJECT_ID/at-forecast-rust:$COMMIT_SHA
+- name: gcr.io/cloud-builders/docker
+  args:
+  - build
+  - -f
+  - Dockerfile.rust-sync
+  - -t
+  - gcr.io/$PROJECT_ID/at-forecast-rust-sync:$COMMIT_SHA
+  - .
+- name: gcr.io/cloud-builders/docker
+  args:
+  - push
+  - gcr.io/$PROJECT_ID/at-forecast-rust-sync:$COMMIT_SHA
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+  entrypoint: gcloud
+  args:
+  - run
+  - services
+  - update
+  - at-forecast-rust
+  - --project
+  - at-forecast
+  - --region
+  - us-east4
+  - --image
+  - gcr.io/$PROJECT_ID/at-forecast-rust:$COMMIT_SHA
+  - --quiet
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+  entrypoint: gcloud
+  args:
+  - run
+  - services
+  - update-traffic
+  - at-forecast-rust
+  - --project
+  - at-forecast
+  - --region
+  - us-east4
+  - --to-latest
+  - --quiet
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+  entrypoint: gcloud
+  args:
+  - run
+  - jobs
+  - update
+  - at-forecast-rust-sync
+  - --project
+  - at-forecast
+  - --region
+  - us-east4
+  - --image
+  - gcr.io/$PROJECT_ID/at-forecast-rust-sync:$COMMIT_SHA
+  - --quiet
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+timeout: 1800s
+images:
+- gcr.io/$PROJECT_ID/at-forecast-rust:$COMMIT_SHA
+- gcr.io/$PROJECT_ID/at-forecast-rust-sync:$COMMIT_SHA

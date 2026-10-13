@@ -42,12 +42,16 @@ async fn public_routes_preserve_responses_with_bounded_queries() {
         config: cfg.clone(),
     };
     assert!(
-        sqlx::query(
-            "INSERT INTO keys (key,created_at,updated_at) VALUES ('forbidden',now(),now())"
-        )
-        .execute(&app.pool)
-        .await
-        .is_err()
+        app.pool
+            .read()
+            .await
+            .unwrap()
+            .rows::<serde_json::Value>(
+                "UPDATE _migration_state SET syncing=syncing WHERE id=1",
+                vec![]
+            )
+            .await
+            .is_err()
     );
     let (status, h, html) = request(&app, "/").await;
     assert_eq!(status, StatusCode::OK);

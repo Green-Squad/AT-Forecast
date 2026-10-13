@@ -1,0 +1,7 @@
+FROM python:3.13-slim-trixie
+WORKDIR /app
+COPY rust/migration/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt && groupadd -g 10001 app && useradd -u 10001 -g app --no-create-home app
+COPY rust/migration/ ./
+USER 10001:10001
+CMD ["python", "sync_data.py"]

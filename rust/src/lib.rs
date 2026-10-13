@@ -1,4 +1,5 @@
 pub mod db;
+pub mod remote;
 use askama::Template;
 use axum::{
     Json, Router,
@@ -10,15 +11,11 @@ use axum::{
 use chrono_tz::Tz;
 use db::{DayView, Db, Shelter, StateView};
 use serde_json::json;
-use sqlx::{
-    ConnectOptions, PgPool,
-    postgres::{PgConnectOptions, PgPoolOptions},
-};
+
 use std::{
     collections::HashMap,
     env,
     path::PathBuf,
-    str::FromStr,
     time::{Duration, Instant, SystemTime},
 };
 use tower::Layer;
@@ -76,45 +73,12 @@ fn number(name: &str, default: u64) -> Result<u64, String> {
         Ok(n)
     }
 }
-pub async fn pool_from_env(cfg: &Config) -> Result<PgPool, String> {
-    let options = if let Ok(url) = env::var("DATABASE_URL") {
-        PgConnectOptions::from_str(&url).map_err(|_| "Invalid DATABASE_URL".to_string())?
-    } else {
-        let required = |name: &str| env::var(name).map_err(|_| format!("Missing {name}"));
-        PgConnectOptions::new()
-            .host(&required("FASTATWEATHER_DATABASE_HOST")?)
-            .username(&required("FASTATWEATHER_DATABASE_USERNAME")?)
-            .password(&required("FASTATWEATHER_DATABASE_PASSWORD")?)
-            .database(
-                &env::var("FASTATWEATHER_DATABASE_NAME")
-                    .unwrap_or_else(|_| "fast_at_weather_production".into()),
-            )
-    };
-    let count = number("DB_POOL_SIZE", 5)?;
-    if count > 100 {
-        return Err("DB_POOL_SIZE must be at most 100".into());
-    }
-    let options = options.disable_statement_logging().options([
-        ("default_transaction_read_only", "on".to_string()),
-        (
-            "statement_timeout",
-            cfg.query_timeout.as_millis().to_string(),
-        ),
-        ("TimeZone", cfg.database_timezone.to_string()),
-    ]);
-    Ok(PgPoolOptions::new()
-        .max_connections(count as u32)
-        .acquire_timeout(Duration::from_millis(number(
-            "DB_ACQUIRE_TIMEOUT_MS",
-            5000,
-        )?))
-        .idle_timeout(Duration::from_secs(600))
-        .max_lifetime(Duration::from_secs(1800))
-        .connect_lazy_with(options))
+pub async fn pool_from_env(cfg: &Config) -> Result<remote::Pool, String> {
+    remote::Pool::from_env(cfg.query_timeout).await
 }
 #[derive(Clone)]
 pub struct App {
-    pub pool: PgPool,
+    pub pool: remote::Pool,
     pub config: Config,
 }
 pub fn router(app: App) -> Router {

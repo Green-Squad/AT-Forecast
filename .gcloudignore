@@ -1,0 +1,7 @@
+.git
+.gitignore
+#!include:.gitignore
+**/target/**
+.env*
+**/*.token
+**/__pycache__/**
