@@ -33,11 +33,10 @@
         </div>
       </div>
       <div class="content pure-u-1 pure-u-md-3-4">
-        <%= render "layouts/hand_forged" if ENV['HAND_FORGED_DEMO'] == 'true' %>
         <%= yield %>
       </div>
     </div>
-    <% if Rails.env.production? && ENV['HAND_FORGED_DEMO'] != 'true' %>
+    <% if Rails.env.production? %>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-C5G0041GWN"></script>
     <script>

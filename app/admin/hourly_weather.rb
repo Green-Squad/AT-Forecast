@@ -1,5 +1,4 @@
 ActiveAdmin.register HourlyWeather do
-  permit_params :date, :temp, :description, :shelter_id, :wind if ENV['HAND_FORGED_DEMO'] == 'true'
 
 # See permitted parameters documentation:
 # https://github.com/activeadmin/activeadmin/blob/master/docs/2-resource-customization.md#setting-up-strong-parameters

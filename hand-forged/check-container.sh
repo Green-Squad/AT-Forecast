@@ -30,7 +30,9 @@ docker logs hf-web > hand-forged/test-results/first-shutdown.log 2>&1
 cleanup
 launch
 for i in $(seq 1 180); do curl --fail --silent http://127.0.0.1:8080/ >/dev/null && break || sleep 1; done
-curl --fail --silent http://127.0.0.1:8080/ | grep -q 'Hand-Forged Edition'
+curl --fail --silent http://127.0.0.1:8080/ -o hand-forged/test-results/reset-home.html
+grep -q 'Georgia' hand-forged/test-results/reset-home.html
+! grep -q 'Hand-Forged Edition' hand-forged/test-results/reset-home.html
 docker exec hf-web test ! -e tmp/hand-forged-reset-marker
 count=$(docker exec hf-database psql -U postgres -d fast_at_weather_production -tAc 'SELECT COUNT(*) FROM states')
 test "$count" = 13

@@ -1,5 +1,0 @@
-<h2>Local demo mail inbox</h2>
-<p>These messages were captured in your demo browser session. No email was sent.</p>
-<% @messages.each do |body| %>
-  <iframe title="Captured demo email" sandbox="allow-same-origin allow-top-navigation-by-user-activation" srcdoc="<%= body.gsub('<a ', '<a target="_top" ') %>" style="width:100%;height:220px;border:1px solid #ddd"></iframe>
-<% end %>

@@ -6,7 +6,7 @@ const page=await context.newPage();const failures=[];
 page.on('pageerror',e=>failures.push(e.message));
 page.on('response',r=>{if(r.url().includes('/assets/')&&r.status()>=400)failures.push('Asset '+r.status()+' '+r.url());});
 await page.goto('http://127.0.0.1:8080/');
-if(!(await page.textContent('body')).includes('Hand-Forged Edition'))throw Error('notice missing');
+if((await page.textContent('body')).includes('Hand-Forged Edition'))throw Error('Unexpected banner');
 await page.locator('.state[data-statename=Georgia]').click();
 await page.getByRole('link',{name:'Max Epperson Shelter',exact:true}).click();
 await page.waitForURL('**/shelters/1');

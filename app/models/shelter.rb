@@ -57,7 +57,6 @@ class Shelter < ApplicationRecord
   end
 
   def load_weather(type)
-    return HandForgedWeather.for(self, type) if ENV['HAND_FORGED_DEMO'] == 'true'
     base_url = 'https://api.openweathermap.org/data/2.5/forecast'
     if type == 'daily'
       base_url += '/daily?'
@@ -144,7 +143,6 @@ class Shelter < ApplicationRecord
   end
 
   def get_elevation(latt, long)
-    return self.elevation if ENV['HAND_FORGED_DEMO'] == 'true'
     elevation = Elevation.where(latt: latt.to_d, long: long.to_d).first
     unless (elevation.present?)
       api_key = ENV['GOOGLE_MAPS_API_KEY']
