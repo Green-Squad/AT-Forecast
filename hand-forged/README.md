@@ -8,7 +8,7 @@ The PostgreSQL 15.19 sidecar initializes the original schema, 13 trail states, a
 
 Visitors on the same instance share edits. Closing a browser does not reset anything. Replacing/restarting the server restores the seed; deployments can briefly overlap instances with separate disposable state.
 
-The separate `hand-forged` branch and Cloud Build trigger use `hand-forged/cloudbuild.yaml`. Its guard accepts only that branch and the fixed service name `atforecast-hand-forged`, project `at-forecast`, region `us-east4`. The two demo image packages reuse the project's existing registry. The service uses a dedicated runtime identity with no project roles, second-generation execution, request-based billing, min zero/max one and database-before-web startup ordering. Provision the runtime identity once; public access and the domain mapping are separate infrastructure setup.
+The separate `hand-forged` branch and Cloud Build trigger use `hand-forged/cloudbuild.yaml`. Its guard accepts only that branch and the fixed service name `atforecast-hand-forged`, project `at-forecast`, region `us-east4`. The two demo image packages reuse the project's existing registry. The service uses a dedicated runtime identity with no project roles, second-generation execution, request-based billing, min zero/max one and database-before-web startup ordering. Provision the runtime identity once; the workflow verifies the matching isolated CI check before deployment and enables public invocation only on this demo service. The domain mapping remains separate infrastructure setup.
 
 ## Validation
 
