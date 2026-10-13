@@ -29,6 +29,7 @@ _,html=request('/nearest_shelter?nobo_mile=10');assert 'Hawk Mountain Shelter' i
 _,html=request('/admin/login');token=csrf(html)
 path,html=request('/admin/login',{'authenticity_token':token,'admin_user[email]':'admin@handforged.invalid','admin_user[password]':'HandForgedDemo!','commit':'Login'})
 assert '/admin' in path and 'Dashboard' in html and 'Invalid Email' not in html
+assert any(c.name=='_atforecast_hand_forged_session' for c in jar) and not any(c.name=='_Fast-AT-Weather_session' for c in jar)
 _,html=request('/admin/states/new');token=csrf(html)
 path,html=request('/admin/states',{'authenticity_token':token,'state[name]':'Demo validation state','state[abbreviation]':'XX','commit':'Create State'})
 assert re.fullmatch('/admin/states/[0-9]+',path),path

@@ -10,6 +10,5 @@ if ENV['HAND_FORGED_DEMO'] == 'true'
   end
   Rails.application.config.action_mailer.default_url_options = ENV['HAND_FORGED_LOCAL_TEST'] == 'true' ? { host: '127.0.0.1', port: 8080, protocol: 'http' } : { host: ENV.fetch('HAND_FORGED_HOST', 'handforged.atforecast.app'), protocol: 'https' }
   ActionMailer::Base.default_url_options = Rails.application.config.action_mailer.default_url_options
-  Rails.application.config.session_store :cookie_store, key: '_atforecast_hand_forged_session', secure: ENV['HAND_FORGED_LOCAL_TEST'] != 'true', httponly: true
   ActiveAdmin.application.site_title = 'AT Forecast — Hand-Forged Edition'
 end
