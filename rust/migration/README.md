@@ -43,14 +43,17 @@ Indexes include source indexes plus shelter/forecast route composites.
 ## Ongoing freshness
 
 Job `at-forecast-rust-sync` in us-east4 runs using `Dockerfile.rust-sync`, one task,
-600-second timeout, two task retries, and the source configuration mounted from
-Secret Manager. Scheduler `at-forecast-rust-sync-schedule` invokes it at minutes
-7 and 37 UTC each hour through a dedicated `rust-turso-scheduler` identity with
-job-only Run Invoker. The original weather updater remains daily midnight
-America/New_York. A 30-minute refresh bounds normal replication lag while each
-source export takes about 10 seconds. An unchanged run measured 33 destination
-rows read and 4 written; a changed complete import measured roughly 42,459 indexed
-rows written, about 1.3 million per month for daily weather replacements.
+600-second timeout, two task retries, and protected source/import credentials.
+Refresh is **manual only**, as requested. The previously created Rust scheduler
+remains PAUSED and provisioning never creates or enables a schedule. The original
+daily weather updater remains unchanged. Rust forecast freshness is the last
+successful manual source snapshot; it will not advance automatically.
+
+Run and wait for a validated refresh:
+`gcloud run jobs execute at-forecast-rust-sync --project=at-forecast --region=us-east4 --wait`.
+Inspect the Cloud Run execution/logs for status `validated`, source snapshot time,
+counts and freshness. Failures keep the previous valid dataset. A changed full
+import measured about 42,459 indexed writes; source export takes about ten seconds.
 
 The job validates snapshot checksums and complete forecast coverage (seven daily and forty hourly records per shelter, matching the observed source updater), builds a complete
 private generation, validates it, and atomically changes the active pointer and
@@ -78,7 +81,7 @@ revisions point to a frozen database and should not be used for a normal app rol
 For a data rollback, pause only `at-forecast-rust-sync-schedule`, inspect private
 `_migration_reports`, and change `_migration_state.generation` to the retained
 previous validated generation using the Rust import credential. Verify Rust
-HTML/JSON, then resume that scheduler after addressing the bad input. Do not
+HTML/JSON, then run a manual refresh after addressing the bad input. Keep automatic scheduling paused. Do not
 modify source data or original resources. Recovery snapshots are retained in the
 migration operator's protected workspace outside both repositories.
 
@@ -95,7 +98,6 @@ sync reports, conflicts and Rust-owned data, not only original source tables.
 Protected SQLite recovery files remain outside Git in private/virginia-recovery
 in the migration workspace. Frozen Ireland copies remain private and source-independent.
 New read/import tokens are Secret Manager version 2; Game Loadouts' scoped writer
-is version 5. Source secret version 1 is unchanged. Both active sync jobs and
-schedulers are in us-east4; deployment workflows target only that Rust region.
+is version 5. Source secret version 1 is unchanged. Both manual sync jobs are in us-east4; deployment workflows target only that Rust region.
 Hrana BLOB decoding accepts the endpoint's padded and unpadded Base64 forms and has
 a focused regression test. The active website routes and independent writes remain enabled.
