@@ -352,7 +352,7 @@ def publish(db, schema, gen, validation, extra=()):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--snapshot", type=Path, required=True)
-    p.add_argument("--database", choices=["atforecast-rust", "gameloadouts-rust"], required=True)
+    p.add_argument("--database", choices=["atforecast-rust", "gameloadouts-rust", "atforecast-rust-us", "gameloadouts-rust-us"], required=True)
     p.add_argument("--token-file", type=Path, required=True)
     p.add_argument("--uca-file", type=Path, default=Path(__file__).with_name("uca4-primary.json"))
     p.add_argument("--generation", type=int, required=True)
@@ -363,7 +363,8 @@ def main():
     if args.token_file.stat().st_mode & 0o077: p.error("Token file must be private")
     try:
         schema = Schema(args.snapshot, args.uca_file)
-        db = Remote("libsql://" + args.database + "-greensquad.aws-eu-west-1.turso.io", args.token_file.read_text())
+        region = "aws-us-east-1" if args.database.endswith("-us") else "aws-eu-west-1"
+        db = Remote("libsql://" + args.database + "-greensquad." + region + ".turso.io", args.token_file.read_text())
         validation = import_generation(db, schema, args.generation)
         if args.publish: publish(db, schema, args.generation, validation)
         validation["published"] = args.publish

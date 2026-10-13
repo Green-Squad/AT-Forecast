@@ -27,7 +27,9 @@ def decode(v):
     if v["type"] == "null": return None
     if v["type"] == "integer": return int(v["value"])
     if v["type"] == "float": return float(v["value"])
-    if v["type"] == "blob": return base64.b64decode(v["base64"])
+    if v["type"] == "blob":
+        encoded = v["base64"]
+        return base64.b64decode(encoded + "=" * (-len(encoded) % 4), validate=True)
     if v["type"] == "text": return v["value"]
     raise DatabaseError("Unsupported destination value type")
 

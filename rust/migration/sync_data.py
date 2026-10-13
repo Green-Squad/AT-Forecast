@@ -417,7 +417,7 @@ def cleanup_generations(db,schema,active):
 
 def main():
     database=os.environ["TURSO_DATABASE_NAME"]
-    if database not in ("atforecast-rust","gameloadouts-rust"):raise ValueError("Destination is not an allowlisted Rust database")
+    if database not in ("atforecast-rust","gameloadouts-rust","atforecast-rust-us","gameloadouts-rust-us"):raise ValueError("Destination is not an allowlisted Rust database")
     db=Remote(os.environ["TURSO_DATABASE_URL"],os.environ["TURSO_AUTH_TOKEN"])
     run_id=str(uuid.uuid4());started=time.monotonic()
     if not acquire_lease(db,run_id):

@@ -5,11 +5,12 @@ https://rust.atforecast.app, and the named Rust sync resources belong to this mi
 Original `master`, Rails service `at-forecast`, root/www routing, its weather job,
 and `hand-forged` resources are protected and must not be changed.
 
-The private `atforecast-rust` database uses the libSQL engine, official Rust
-`libsql` 0.10 remote/TLS client, and direct remote access. The Free account has
-one group, `rust-websites`, in aws-eu-west-1 (Ireland). AWS groups reject edge
-replicas, so AT's US service currently crosses the Atlantic. No paid plan or
-overages were enabled. The database size cap is 1 GB.
+The private `atforecast-rust-us` database uses the libSQL engine and official Rust
+`libsql` 0.10 remote/TLS client with direct remote access. Group `rust-websites-us`
+is in aws-us-east-1 (Virginia), near Cloud Run us-east4 (Northern Virginia).
+No paid plan or overages were enabled. AWS imported databases currently reject
+per-database size limits; account Free quotas and disabled overages remain active.
+The Ireland database is retained as a frozen recovery copy, not an active sync target.
 
 Runtime service account `rust-turso-web` can read only secret `rust-turso-read`.
 The application uses that read-only database token. `rust-turso-sync` can access
@@ -27,7 +28,7 @@ repeatable-read PostgreSQL snapshot. Preserve completed directories, mode 0700,
 outside Git. Gzipped rows use explicit type tags; `schema.json` and `report.json`
 record schema, counts and full normalized SHA256 sum/xor checksums.
 
-`snapshot_sqlite.py --snapshot /protected/snapshot --database atforecast-rust
+`snapshot_sqlite.py --snapshot /protected/snapshot --database atforecast-rust-us
 --token-file /protected/import.token --generation N --report /protected/report.json
 --publish` converts only recognized declarations, imports bounded 150-row batches,
 checks every original column, counts, checksums, uniqueness, foreign keys and
@@ -70,7 +71,8 @@ DST, decimals, errors, retries, overlap and forecast replacement.
 Application rollback only affects Rust:
 `gcloud run services update-traffic at-forecast-rust --project at-forecast
 --region us-east4 --to-revisions=PREVIOUS_TURSO_REVISION=100`.
-Revision `at-forecast-rust-00010-lah` is a verified Turso baseline. The older
+Revision `at-forecast-rust-00012-xlx` is the verified Virginia baseline. Older Ireland
+revisions point to a frozen database and should not be used for a normal app rollback. The older
 `at-forecast-rust-00006-dp5` remains available as a legacy read-only source revision.
 
 For a data rollback, pause only `at-forecast-rust-sync-schedule`, inspect private
@@ -83,3 +85,17 @@ migration operator's protected workspace outside both repositories.
 Cloud Run reserves some paths ending in `z`, including the observed external
 `/healthz` 404; container tests exercise that existing route, while deployed smoke
 checks use HTML and JSON. See https://docs.cloud.google.com/run/docs/known-issues.
+
+## Virginia relocation recovery and validation
+
+The full Turso export plus WAL was validated against every live physical table,
+schema/index, sequence and normalized checksum before import; the new Virginia
+endpoint passed the same checks. This includes prior generations, source baselines,
+sync reports, conflicts and Rust-owned data, not only original source tables.
+Protected SQLite recovery files remain outside Git in private/virginia-recovery
+in the migration workspace. Frozen Ireland copies remain private and source-independent.
+New read/import tokens are Secret Manager version 2; Game Loadouts' scoped writer
+is version 5. Source secret version 1 is unchanged. Both active sync jobs and
+schedulers are in us-east4; deployment workflows target only that Rust region.
+Hrana BLOB decoding accepts the endpoint's padded and unpadded Base64 forms and has
+a focused regression test. The active website routes and independent writes remain enabled.

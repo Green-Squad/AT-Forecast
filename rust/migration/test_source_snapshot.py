@@ -3,9 +3,15 @@ from decimal import Decimal
 import json
 import unittest
 from source_snapshot import canonical, encode, quote
+from turso_http import decode
 
 
 class PreservationTests(unittest.TestCase):
+    def test_hrana_blob_with_optional_base64_padding(self):
+        self.assertEqual(decode({"type": "blob", "base64": "AP8="}), b"\x00\xff")
+        self.assertEqual(decode({"type": "blob", "base64": "AP8"}), b"\x00\xff")
+        self.assertEqual(decode({"type": "blob", "base64": ""}), b"")
+
     def test_decimal_precision_scale_and_large_ids(self):
         row = [Decimal("9007199254740993.123456789000"), 18446744073709551615]
         self.assertEqual(json.loads(canonical([encode(v) for v in row])),

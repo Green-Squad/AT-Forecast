@@ -9,7 +9,7 @@ def call(args,check=True):
     if check and result.returncode:raise RuntimeError("Rust resource operation failed: "+" ".join(args[:3]))
     return result
 
-MAP=[('at-forecast','at-forecast-rust','us-east4','atforecast-rust'),('game-loadouts','game-loadouts-rust','europe-west1','gameloadouts-rust')]
+MAP=[('at-forecast','at-forecast-rust','us-east4','atforecast-rust-us'),('game-loadouts','game-loadouts-rust','us-east4','gameloadouts-rust-us')]
 def provision(project,service,region,database,tag):
     job=service+'-sync';scheduler=job+'-schedule';scheduler_sa='rust-turso-scheduler@'+project+'.iam.gserviceaccount.com'
     call(['services','enable','cloudscheduler.googleapis.com','--project',project])
@@ -19,8 +19,8 @@ def provision(project,service,region,database,tag):
     args=['run','jobs','update' if exists else 'create',job,'--region',region,'--project',project,
           '--image',f'gcr.io/{project}/{service}-sync:{tag}','--service-account','rust-turso-sync@'+project+'.iam.gserviceaccount.com',
           '--tasks','1','--parallelism','1','--max-retries','2','--task-timeout','600s','--cpu','1','--memory','512Mi',
-          '--set-env-vars',f'TURSO_DATABASE_NAME={database},TURSO_DATABASE_URL=libsql://{database}-greensquad.aws-eu-west-1.turso.io,SOURCE_CONFIG_FILE=/secrets/source/config.json',
-          '--set-secrets','/secrets/source/config.json=rust-turso-source:1,TURSO_AUTH_TOKEN=rust-turso-import:1',
+          '--set-env-vars',f'TURSO_DATABASE_NAME={database},TURSO_DATABASE_URL=libsql://{database}-greensquad.aws-us-east-1.turso.io,SOURCE_CONFIG_FILE=/secrets/source/config.json',
+          '--set-secrets','/secrets/source/config.json=rust-turso-source:1,TURSO_AUTH_TOKEN=rust-turso-import:2',
           '--labels','scope=rust-turso-migration','--quiet']
     call(args)
     call(['run','jobs','add-iam-policy-binding',job,'--region',region,'--project',project,'--member','serviceAccount:'+scheduler_sa,'--role','roles/run.invoker'])
