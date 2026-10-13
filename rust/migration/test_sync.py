@@ -15,10 +15,18 @@ class Local:
         if sql=='BEGIN READONLY':sql='BEGIN'
         self.requests+=1;cursor=self.c.execute(sql,args)
         rows=cursor.fetchall();self.read+=len(rows);self.written+=max(cursor.rowcount,0)
-        result={'rows':rows,'affected_row_count':max(cursor.rowcount,0)}
+        result={'rows':rows,'cols':[c[0] for c in cursor.description] if cursor.description else [],'affected_row_count':max(cursor.rowcount,0)}
         if close and self.c.in_transaction:self.c.rollback()
         return result
     def query(self,sql,args=(),close=True):return [dict(r) for r in self.execute(sql,args,close)['rows']]
+    def pipeline(self,operations,close=True):
+        from turso_http import decode,value
+        result=[]
+        for op in operations:
+            stmt=op['stmt'];r=self.execute(stmt['sql'],[decode(v) for v in stmt['args']],False)
+            result.append({'cols':[{'name':c} for c in r['cols']],'rows':[[value(v) for v in row] for row in r['rows']]})
+        if close and self.c.in_transaction:self.c.rollback()
+        return result
     def batch(self,statements,atomic=True,close=True):
         if atomic:self.c.execute('PRAGMA foreign_keys=ON');self.c.execute('BEGIN IMMEDIATE')
         try:
@@ -58,6 +66,11 @@ class SyncTests(unittest.TestCase):
         if isinstance(self.db,Local):self.db.c.close()
         self.temp.cleanup()
     def snapshot(self,rows,forecast=False):
+        if forecast:
+            rows={t:list(values) for t,values in rows.items()}
+            for t,n in [('weathers',7),('hourly_weathers',40)]:
+                if len(rows[t])==1:
+                    row=rows[t][0];rows[t]=[[row[0]+i,row[1],row[2]+str(i)] for i in range(n)]
         self.number+=1;p=self.root/str(self.number);p.mkdir()
         columns={t:[('id','integer'),('name','text')] for t in rows}
         if "children" in rows:
@@ -128,6 +141,26 @@ class SyncTests(unittest.TestCase):
         self.assertGreater(result['conflicts_preserved'],0)
         self.assertEqual(self.db.query('SELECT id FROM _g1_parents'),[{'id':2}])
         self.assertEqual(self.db.query('SELECT id FROM _g1_children'),[{'id':4294967296}])
+    def test_raw_generation_publication_cannot_replace_independent_writes(self):
+        s=self.snapshot({'items':[[1,'old']]});self.initialize(s)
+        report=import_generation(self.db,s,2);self.db.execute('UPDATE _rust_write_epoch SET value=1')
+        s.engine='mysql'
+        with self.assertRaisesRegex(ValueError,'Independent Rust writes'):publish(self.db,s,2,report)
+        self.assertEqual(self.db.query('SELECT generation FROM _migration_state')[0]['generation'],1)
+    def test_raw_publish_epoch_guard_is_atomic(self):
+        s=self.snapshot({'items':[[1,'old']]});self.initialize(s);report=import_generation(self.db,s,2);s.engine='mysql'
+        original=self.db.batch
+        def race(statements,atomic=True,close=True):
+            statements=list(statements)
+            if any('_migration_publish_guard' in sql for sql,_ in statements):
+                self.db.execute('UPDATE _rust_write_epoch SET value=1')
+            return original(statements,atomic,close)
+        self.db.batch=race
+        with self.assertRaises(Exception):publish(self.db,s,2,report)
+        self.db.batch=original
+        self.assertEqual(self.db.query('SELECT generation FROM _migration_state')[0]['generation'],1)
+        self.db.execute('UPDATE _rust_write_epoch SET value=0');publish(self.db,s,2,report)
+        self.assertEqual(self.db.query('SELECT generation FROM _migration_state')[0]['generation'],2)
     def test_import_is_idempotent_and_recovers_owned_partial_stage(self):
         s=self.snapshot({'items':[[1,'old'],[2,'new']]});self.initialize(s)
         self.assertTrue(import_generation(self.db,s,1)['reused'])

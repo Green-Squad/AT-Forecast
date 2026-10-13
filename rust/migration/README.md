@@ -51,14 +51,14 @@ source export takes about 10 seconds. An unchanged run measured 33 destination
 rows read and 4 written; a changed complete import measured roughly 42,459 indexed
 rows written, about 1.3 million per month for daily weather replacements.
 
-The job validates snapshot checksums and forecast coverage, builds a complete
+The job validates snapshot checksums and complete forecast coverage (seven daily and forty hourly records per shelter, matching the observed source updater), builds a complete
 private generation, validates it, and atomically changes the active pointer and
 source fingerprints. Requests pin one generation in a read transaction. Partial
 replacement, failure and retries retain the previous valid dataset. A 15-minute
 lease prevents overlapping runs; the task timeout is shorter than the lease.
 Two published generations are retained. The last 2,000 concise sync reports are
 retained. Logs contain counts, duration, freshness and errors, not records.
-Website caching behavior is unchanged and may add its existing cache age.
+Website caching behavior is unchanged: the existing homepage cache can add up to two hours of visible age. Shelter and authorized JSON routes read the fresh published generation.
 
 ## Validation and rollback
 

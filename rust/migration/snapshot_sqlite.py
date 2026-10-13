@@ -190,7 +190,11 @@ class Schema:
                         raise ValueError("Source default requires explicit SQLite conversion")
                 fields.append(field)
                 if self.keyed(c):
-                    fields.append(quote("_key_" + name, 'postgres') + " BLOB" + (" NOT NULL" if not nullable else ""))
+                    shadow=quote("_key_" + name,'postgres') + " BLOB" + (" NOT NULL" if not nullable else "")
+                    if default is not None and str(default).startswith("'") and str(default).endswith("'"):
+                        literal=str(default)[1:-1].replace("''", "'")
+                        shadow += " DEFAULT X'" + self.uca.key(literal).hex() + "'"
+                    fields.append(shadow)
             if table == "users" and self.engine == "mysql": fields.append('"_credential_hash" TEXT NOT NULL')
             if pk and not inline:
                 fields.append("PRIMARY KEY (" + ",".join(quote(c, 'postgres') for c in pk) + ")")
@@ -323,7 +327,19 @@ def import_generation(db, schema, gen):
 
 
 def publish(db, schema, gen, validation, extra=()):
+    guards=[]
+    if db.query("SELECT name FROM sqlite_master WHERE name='_rust_write_epoch'"):
+        epoch=db.query("SELECT value FROM _rust_write_epoch WHERE id=1")[0]["value"]
+        state=db.query("SELECT generation FROM _migration_state WHERE id=1")
+        if schema.engine=="mysql" and epoch and state and state[0]["generation"]!=gen:
+            raise ValueError("Independent Rust writes exist; use ownership-aware sync instead of raw generation publication")
+        if schema.engine=="mysql":
+            guards=[
+                ("CREATE TABLE IF NOT EXISTS _migration_publish_guard(id INTEGER PRIMARY KEY CHECK(id=1),ok INTEGER NOT NULL CHECK(ok=1))",()),
+                ("INSERT INTO _migration_publish_guard(id,ok) SELECT 1,CASE WHEN (SELECT value FROM _rust_write_epoch WHERE id=1)>0 AND (SELECT generation FROM _migration_state WHERE id=1)<>? THEN 0 ELSE 1 END ON CONFLICT(id) DO UPDATE SET ok=excluded.ok",(gen,)),
+            ]
     db.batch([
+        *guards,
         ("CREATE TABLE IF NOT EXISTS _migration_state(id INTEGER PRIMARY KEY CHECK(id=1),generation INTEGER NOT NULL,schema_sha256 TEXT NOT NULL,source_snapshot_utc TEXT NOT NULL,published_utc TEXT NOT NULL,syncing INTEGER NOT NULL DEFAULT 0)", ()),
         ("CREATE TABLE IF NOT EXISTS _migration_reports(generation INTEGER PRIMARY KEY,report TEXT NOT NULL)", ()),
         ("INSERT INTO _migration_reports(generation,report) VALUES(?,?) ON CONFLICT(generation) DO UPDATE SET report=excluded.report", (gen, canonical(validation))),

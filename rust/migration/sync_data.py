@@ -19,7 +19,7 @@ import time
 import uuid
 from source_snapshot import canonical, quote, run as export_source
 from snapshot_sqlite import Schema, sqlite_value, source_normalized, physical, import_generation, publish
-from turso_http import Remote, DatabaseError
+from turso_http import Remote, DatabaseError, statement, decode
 
 
 def utc(): return dt.datetime.now(dt.UTC).isoformat()
@@ -268,6 +268,7 @@ def stage_full_sync(db,schema,incoming,desired,conflicts,epoch,run_id):
     # These exact private staging objects belong to this completed run only.
     for table in reversed(schema.order()):db.execute(f"DROP TABLE {quote(physical(generation,table),'postgres')}")
     db.execute(f"DROP TABLE {quote(baseline_table,'postgres')}")
+    db.execute("DELETE FROM _migration_staging WHERE generation=?",(generation,))
     return result
 
 
@@ -353,11 +354,18 @@ def delta_sync(db,schema,run_id):
         if db.query("PRAGMA foreign_key_check",close=False):raise ValueError("Refresh would violate relationships; active dataset retained")
         # Every changed row is checked before publishing. Unchanged rows came
         # from a pinned, previously validated destination snapshot.
-        for table,row in representatives:
-            where,args=predicate(schema,table,row)
-            names=[c["name"] for c in schema.columns[table]]
-            actual=db.query(f"SELECT {','.join(quote(c,'postgres') for c in names)} FROM {quote(physical(generation,table),'postgres')} WHERE {where} LIMIT 1",args,close=False)
-            if not actual or [source_normalized(actual[0][c["name"]],c) for c in schema.columns[table]]!=row:raise ValueError("Changed-row validation failed")
+        for start in range(0,len(representatives),150):
+            selected=representatives[start:start+150];queries=[]
+            for table,row in selected:
+                where,args=predicate(schema,table,row)
+                names=[c["name"] for c in schema.columns[table]]
+                sql=f"SELECT {','.join(quote(c,'postgres') for c in names)} FROM {quote(physical(generation,table),'postgres')} WHERE {where} LIMIT 1"
+                queries.append({"type":"execute","stmt":statement(sql,args)})
+            actuals=db.pipeline(queries,close=False)
+            for (table,row),actual in zip(selected,actuals):
+                columns=[c["name"] for c in actual["cols"]]
+                values=dict(zip(columns,(decode(v) for v in actual["rows"][0]))) if actual["rows"] else {}
+                if not values or [source_normalized(values[c["name"]],c) for c in schema.columns[table]]!=row:raise ValueError("Changed-row validation failed")
         for start in range(0,len(baseline),150):db.batch(baseline[start:start+150],atomic=False,close=False)
         write_source_fingerprints(db,schema)
         result={"run_id":run_id,"method":"delta-three-way","changed_tables":changed,"changes":dict(changes),"conflicts_preserved":len(conflicts),"source_snapshot_utc":schema.report["snapshot_started_utc"],"source_counts":{t["table"]:t["source_rows"] for t in schema.report["tables"]},"destination_counts":{t:len(desired[t]) for t in schema.tables},"duration_seconds":round(time.monotonic()-started,3),"status":"validated"}
@@ -373,7 +381,7 @@ def delta_sync(db,schema,run_id):
 def forecast_complete(schema):
     if schema.engine!="postgres":return
     shelters=snapshot_rows(schema,"shelters");names=[c["name"] for c in schema.columns["shelters"]];ids={r[names.index("id")] for r in shelters.values()}
-    for table,minimum in [("weathers",1),("hourly_weathers",1)]:
+    for table,minimum in [("weathers",7),("hourly_weathers",40)]:
         columns=[c["name"] for c in schema.columns[table]];counts=collections.Counter(r[columns.index("shelter_id")] for r in snapshot_rows(schema,table).values())
         if any(counts[i]<minimum for i in ids):raise ValueError("Forecast source replacement is incomplete; active dataset retained")
 
@@ -411,7 +419,7 @@ def main():
     database=os.environ["TURSO_DATABASE_NAME"]
     if database not in ("atforecast-rust","gameloadouts-rust"):raise ValueError("Destination is not an allowlisted Rust database")
     db=Remote(os.environ["TURSO_DATABASE_URL"],os.environ["TURSO_AUTH_TOKEN"])
-    run_id=str(uuid.uuid4())
+    run_id=str(uuid.uuid4());started=time.monotonic()
     if not acquire_lease(db,run_id):
         print(canonical({"status":"skipped-overlap","run_id":run_id}));return 0
     try:
@@ -427,10 +435,10 @@ def main():
                 except ValueError as e:
                     if not str(e).startswith("Destination changed during refresh planning") or attempt==2:raise
             db.execute("DELETE FROM _sync_runs WHERE run_id NOT IN(SELECT run_id FROM _sync_runs ORDER BY rowid DESC LIMIT 2000)")
-            result.update({"http_requests":db.requests,"rows_read":db.read,"rows_written":db.written,"finished_utc":utc()})
+            result.update({"http_requests":db.requests,"rows_read":db.read,"rows_written":db.written,"finished_utc":utc(),"total_duration_seconds":round(time.monotonic()-started,3),"freshness_seconds":round((dt.datetime.now(dt.UTC)-dt.datetime.fromisoformat(schema.report["snapshot_started_utc"])).total_seconds(),3)})
             print(canonical(result))
     except Exception as e:
-        print(canonical({"status":"failed","run_id":run_id,"error_type":type(e).__name__}));return 1
+        print(canonical({"status":"failed","run_id":run_id,"error_type":type(e).__name__,"error_reason":str(e) if isinstance(e,DatabaseError) else "validation-or-source-error"}));return 1
     finally:
         release_lease(db,run_id)
     return 0
