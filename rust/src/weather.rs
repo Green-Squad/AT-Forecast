@@ -6,6 +6,10 @@ use serde_json::{Value as Json, json};
 use std::{
     collections::{BTreeMap, BTreeSet},
     env,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+    },
     time::{Duration, Instant},
 };
 
@@ -181,23 +185,46 @@ pub fn parse_forecast(value: &Json, daily: bool, now: i64) -> Result<Vec<Forecas
     Ok(result)
 }
 
+/// One admission clock for every request, including retries. It never accumulates burst credit.
+struct RequestClock {
+    interval: Duration,
+    last: tokio::sync::Mutex<Option<tokio::time::Instant>>,
+}
+impl RequestClock {
+    async fn admit(&self) {
+        let mut last = self.last.lock().await;
+        if let Some(previous) = *last {
+            tokio::time::sleep(self.interval.saturating_sub(previous.elapsed())).await;
+        }
+        *last = Some(tokio::time::Instant::now());
+    }
+}
 struct Provider {
     client: reqwest::Client,
     base: String,
     key: String,
-    interval: Duration,
-    last: Option<Instant>,
-    calls: usize,
+    clock: RequestClock,
+    permits: tokio::sync::Semaphore,
+    stopped: AtomicBool,
+    calls: AtomicUsize,
 }
 impl Provider {
-    async fn fetch(&mut self, lat: &str, lon: &str, daily: bool) -> Result<Vec<Forecast>> {
+    fn calls(&self) -> usize {
+        self.calls.load(Ordering::Relaxed)
+    }
+    async fn fetch(&self, lat: &str, lon: &str, daily: bool) -> Result<Vec<Forecast>> {
         let endpoint = if daily { "forecast/daily" } else { "forecast" };
         for attempt in 0..3 {
-            if let Some(last) = self.last {
-                tokio::time::sleep(self.interval.saturating_sub(last.elapsed())).await;
+            let permit = self
+                .permits
+                .acquire()
+                .await
+                .map_err(|_| Failure("provider stopped"))?;
+            self.clock.admit().await;
+            if self.stopped.load(Ordering::Relaxed) {
+                return Err(Failure("provider rate limit"));
             }
-            self.last = Some(Instant::now());
-            self.calls += 1;
+            self.calls.fetch_add(1, Ordering::Relaxed);
             let response = self
                 .client
                 .get(format!("{}/data/2.5/{endpoint}", self.base))
@@ -213,16 +240,41 @@ impl Provider {
                 Ok(r) if r.status().is_success() => {
                     return parse_forecast(&r.json::<Json>().await?, daily, Utc::now().timestamp());
                 }
-                Ok(r) if r.status().as_u16() == 429 => return Err(Failure("provider rate limit")),
+                Ok(r) if r.status().as_u16() == 429 => {
+                    self.stopped.store(true, Ordering::Relaxed);
+                    return Err(Failure("provider rate limit"));
+                }
                 Ok(r) if !r.status().is_server_error() => return Err(Failure("provider access")),
                 _ if attempt < 2 => {
-                    tokio::time::sleep(Duration::from_secs(2u64.pow(attempt + 1))).await
+                    drop(permit);
+                    tokio::time::sleep(Duration::from_secs(2u64.pow(attempt + 1))).await;
                 }
                 _ => return Err(Failure("provider unavailable")),
             }
         }
         Err(Failure("provider unavailable"))
     }
+}
+type FetchedShelter = (i64, Vec<Forecast>, Vec<Forecast>, String, String);
+fn fetch_shelter(
+    jobs: &mut tokio::task::JoinSet<Result<FetchedShelter>>,
+    provider: Arc<Provider>,
+    shelter: (i64, String, String),
+) {
+    jobs.spawn(async move {
+        let (id, lat, lon) = shelter;
+        let (daily, hourly) = tokio::try_join!(
+            async {
+                let rows = provider.fetch(&lat, &lon, true).await?;
+                Ok::<_, Failure>((rows, Utc::now().format("%Y-%m-%dT%H:%M:%S%.6f").to_string()))
+            },
+            async {
+                let rows = provider.fetch(&lat, &lon, false).await?;
+                Ok::<_, Failure>((rows, Utc::now().format("%Y-%m-%dT%H:%M:%S%.6f").to_string()))
+            }
+        )?;
+        Ok((id, daily.0, hourly.0, daily.1, hourly.1))
+    });
 }
 async fn renew(c: &Connection, owner: &str) -> Result<()> {
     let expires =
@@ -297,7 +349,7 @@ async fn insert_forecasts(
     }
     Ok(())
 }
-async fn update(c: &Connection, provider: &mut Provider, owner: &str) -> Result<Json> {
+async fn update(c: &Connection, provider: &Arc<Provider>, owner: &str) -> Result<Json> {
     let started = Instant::now();
     let snapshot = utc();
     let mut state = c
@@ -482,17 +534,22 @@ async fn update(c: &Connection, provider: &mut Provider, owner: &str) -> Result<
     }
     let mut daily_count = 0;
     let mut hourly_count = 0;
-    for (index, (id, lat, lon)) in shelters.iter().enumerate() {
+    let mut jobs = tokio::task::JoinSet::new();
+    let mut pending = shelters.iter().cloned();
+    // Bound queued data to four shelters and in-flight HTTP requests to four.
+    for shelter in pending.by_ref().take(4) {
+        fetch_shelter(&mut jobs, Arc::clone(provider), shelter);
+    }
+    let mut completed = 0;
+    while let Some(result) = jobs.join_next().await {
+        let (id, daily, hourly, daily_created, hourly_created) =
+            result.map_err(|_| Failure("provider task"))??;
         renew(c, owner).await?;
-        let daily = provider.fetch(lat, lon, true).await?;
-        let daily_created = Utc::now().format("%Y-%m-%dT%H:%M:%S%.6f").to_string();
-        let hourly = provider.fetch(lat, lon, false).await?;
-        let hourly_created = Utc::now().format("%Y-%m-%dT%H:%M:%S%.6f").to_string();
         insert_forecasts(
             c,
             generation,
             "weathers",
-            *id,
+            id,
             &daily,
             &mut next,
             &daily_created,
@@ -502,7 +559,7 @@ async fn update(c: &Connection, provider: &mut Provider, owner: &str) -> Result<
             c,
             generation,
             "hourly_weathers",
-            *id,
+            id,
             &hourly,
             &mut next,
             &hourly_created,
@@ -510,11 +567,15 @@ async fn update(c: &Connection, provider: &mut Provider, owner: &str) -> Result<
         .await?;
         daily_count += daily.len();
         hourly_count += hourly.len();
-        if (index + 1) % 25 == 0 {
+        completed += 1;
+        if let Some(shelter) = pending.next() {
+            fetch_shelter(&mut jobs, Arc::clone(provider), shelter);
+        }
+        if completed % 25 == 0 {
             tracing::info!(
-                shelters_processed = index + 1,
+                shelters_processed = completed,
                 shelters_total = shelters.len(),
-                provider_calls = provider.calls,
+                provider_calls = provider.calls(),
                 duration_seconds = started.elapsed().as_secs(),
                 "weather fetch progress"
             );
@@ -568,7 +629,7 @@ async fn update(c: &Connection, provider: &mut Provider, owner: &str) -> Result<
     }
     renew(c, owner).await?;
     let published = utc();
-    let report = json!({"run_id":owner,"method":"openweather-validated-generation","status":"validated","generation":generation,"source_snapshot_utc":snapshot,"published_utc":published,"shelters":shelters.len(),"daily_records":daily_count,"hourly_records":hourly_count,"provider_calls":provider.calls,"table_counts":counts,"duration_seconds":started.elapsed().as_secs_f64()});
+    let report = json!({"run_id":owner,"method":"openweather-validated-generation","status":"validated","generation":generation,"source_snapshot_utc":snapshot,"published_utc":published,"shelters":shelters.len(),"daily_records":daily_count,"hourly_records":hourly_count,"provider_calls":provider.calls(),"request_limit_per_minute":50,"max_in_flight_requests":4,"table_counts":counts,"duration_seconds":started.elapsed().as_secs_f64()});
     let tx = c
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .await?;
@@ -661,7 +722,7 @@ pub async fn run_from_env() -> Result<Json> {
         key: env::var("OPEN_WEATHER_MAP_API_KEY").map_err(|_| Failure("configuration"))?,
         base: env::var("WEATHER_API_ORIGIN")
             .unwrap_or_else(|_| "https://api.openweathermap.org".into()),
-        interval_ms: 2100,
+        interval_ms: 1200,
     })
     .await
 }
@@ -695,7 +756,7 @@ pub async fn run(settings: Settings) -> Result<Json> {
     {
         return Err(Failure("configuration"));
     }
-    if !isolated && interval_ms < 2100 {
+    if !isolated && interval_ms < 1200 {
         return Err(Failure("provider rate configuration"));
     }
     let database = tokio::time::timeout(
@@ -718,24 +779,30 @@ pub async fn run(settings: Settings) -> Result<Json> {
     if acquired != 1 {
         return Ok(json!({"status":"skipped-overlap","method":"openweather"}));
     }
-    let mut provider = Provider {
+    let provider = Arc::new(Provider {
         client: reqwest::Client::builder()
             .connect_timeout(Duration::from_secs(5))
             .timeout(Duration::from_secs(20))
             .build()?,
         base,
         key,
-        interval: Duration::from_millis(interval_ms),
-        last: None,
-        calls: 0,
+        clock: RequestClock {
+            interval: Duration::from_millis(interval_ms),
+            last: tokio::sync::Mutex::new(None),
+        },
+        permits: tokio::sync::Semaphore::new(4),
+        stopped: AtomicBool::new(false),
+        calls: AtomicUsize::new(0),
+    });
+    let result = match tokio::time::timeout(
+        Duration::from_secs(3300),
+        update(&c, &provider, &owner),
+    )
+    .await
+    {
+        Ok(r) => r,
+        Err(_) => Err(Failure("job deadline")),
     };
-    let result =
-        match tokio::time::timeout(Duration::from_secs(3300), update(&c, &mut provider, &owner))
-            .await
-        {
-            Ok(r) => r,
-            Err(_) => Err(Failure("job deadline")),
-        };
     let _ = c
         .execute("DELETE FROM _sync_lease WHERE id=1 AND owner=?", [owner])
         .await;
@@ -744,6 +811,50 @@ pub async fn run(settings: Settings) -> Result<Json> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test(start_paused = true)]
+    async fn shared_clock_limits_concurrent_requests_without_catchup_bursts() {
+        let interval = Duration::from_millis(1200);
+        let clock = Arc::new(RequestClock {
+            interval,
+            last: tokio::sync::Mutex::new(None),
+        });
+        let mut jobs = tokio::task::JoinSet::new();
+        for _ in 0..64 {
+            let clock = Arc::clone(&clock);
+            jobs.spawn(async move {
+                clock.admit().await;
+                tokio::time::Instant::now()
+            });
+        }
+        let mut starts = Vec::new();
+        while let Some(start) = jobs.join_next().await {
+            starts.push(start.unwrap());
+        }
+        starts.sort();
+        assert!(
+            starts
+                .windows(2)
+                .all(|pair| pair[1].duration_since(pair[0]) >= interval)
+        );
+        for start in &starts {
+            assert!(
+                starts
+                    .iter()
+                    .filter(|next| **next >= *start
+                        && next.duration_since(*start) < Duration::from_secs(60))
+                    .count()
+                    <= 50
+            );
+        }
+        tokio::time::advance(Duration::from_secs(300)).await;
+        clock.admit().await;
+        let previous = tokio::time::Instant::now();
+        clock.admit().await;
+        assert!(
+            previous.elapsed() >= interval,
+            "Idle time must not accrue burst credit"
+        );
+    }
     #[test]
     fn rails_conversions() {
         assert_eq!(fahrenheit(&json!(273.15)).unwrap(), 31);

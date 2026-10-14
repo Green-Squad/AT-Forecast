@@ -23,6 +23,7 @@ libsql = { version = "0.10.0", default-features = false, features = ["remote", "
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 
 [dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
 http-body-util = "0.1"
 
 [profile.release]
