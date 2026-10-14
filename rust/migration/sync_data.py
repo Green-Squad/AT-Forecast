@@ -294,7 +294,7 @@ def release_lease(db,owner):
     db.execute("DELETE FROM _sync_lease WHERE id=1 AND owner=?",(owner,))
 
 
-def delta_sync(db,schema,run_id):
+def delta_sync(db,schema,run_id,preserve_tables=()):
     started=time.monotonic()
     state=db.query("SELECT generation,schema_sha256 FROM _migration_state WHERE id=1")[0]
     if state["schema_sha256"]!=schema.fingerprint: raise ValueError("Live source schema changed; review conversion before refresh")
@@ -326,12 +326,22 @@ def delta_sync(db,schema,run_id):
         for key in sorted(set(previous[table])|set(incoming[table])):
             old=previous[table].get(key);new=incoming[table].get(key);dest=destination[table].get(key)
             if old==new:continue
-            merged,fields=merge_row(old,new,dest,[c["name"] for c in schema.columns[table]])
-            if fields:conflicts.append((table,key,fields,new,dest))
-            if merged is None:desired[table].pop(key,None)
-            else:desired[table][key]=merged
+            if table not in preserve_tables:
+                merged,fields=merge_row(old,new,dest,[c["name"] for c in schema.columns[table]])
+                if fields:conflicts.append((table,key,fields,new,dest))
+                if merged is None:desired[table].pop(key,None)
+                else:desired[table][key]=merged
             if new is None:baseline.append(("DELETE FROM _source_baseline WHERE table_name=? AND row_key=?",(table,key)))
             else:baseline.append(("INSERT INTO _source_baseline(table_name,row_key,source_row) VALUES(?,?,?) ON CONFLICT(table_name,row_key) DO UPDATE SET source_row=excluded.source_row",(table,key,canonical(new))))
+    if preserve_tables and "shelters" in desired:
+        columns=[c["name"] for c in schema.columns["shelters"]]
+        shelter_ids={r[columns.index("id")] for r in desired["shelters"].values()}
+        # Source shelter deletion also removes its Rust forecasts, rather than
+        # retaining a removed shelter solely because fresh forecasts refer to it.
+        for table in preserve_tables:
+            columns=[c["name"] for c in schema.columns[table]]
+            index=columns.index("shelter_id")
+            desired[table]={k:r for k,r in desired[table].items() if r[index] in shelter_ids}
     close_relationships(schema,desired,destination,incoming,conflicts)
     ops=[];changes=collections.Counter();representatives=[]
     order={t:i for i,t in enumerate(schema.order())}
@@ -387,6 +397,10 @@ def forecast_complete(schema):
 
 
 def forecast_sync(db,schema,run_id):
+    if db.query("SELECT name FROM sqlite_master WHERE name='_rust_weather_state'"):
+        ownership=db.query("SELECT owns_forecasts FROM _rust_weather_state WHERE id=1")
+        if ownership and ownership[0]["owns_forecasts"]:
+            return delta_sync(db,schema,run_id,preserve_tables=("weathers","hourly_weathers"))
     forecast_complete(schema)
     state=db.query("SELECT generation,schema_sha256 FROM _migration_state WHERE id=1")[0]
     if state["schema_sha256"]!=schema.fingerprint:raise ValueError("Source schema changed; refresh conversion needs review")

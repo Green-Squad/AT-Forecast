@@ -101,3 +101,34 @@ New read/import tokens are Secret Manager version 2; Game Loadouts' scoped write
 is version 5. Source secret version 1 is unchanged. Both manual sync jobs are in us-east4; deployment workflows target only that Rust region.
 Hrana BLOB decoding accepts the endpoint's padded and unpadded Base64 forms and has
 a focused regression test. The active website routes and independent writes remain enabled.
+
+
+## Native Rust daily weather fetch
+
+The separate `at-forecast-rust-weather` job uses the web image's
+`/usr/local/bin/at-forecast-weather` binary, with the import credential and a
+separate Secret Manager OpenWeather key. The web service has neither credential.
+It fetches the same seven-day daily and forty-step three-hour forecasts as Rails,
+using the existing provider subscription without changing plans. Calls are
+spaced at least 2.1 seconds apart and rate-limit responses stop the run. Network
+timeouts and the total job deadline are bounded. Credentials, request URLs,
+provider payloads and user records are excluded from production logs.
+
+The intended daily schedule is 00:30 America/New_York, after the original daily
+updater. It uses only Rust resources and the private Virginia Turso database.
+The source-database sync remains manual. All source refreshes preserve
+provider-owned forecasts after the first successful weather publication;
+source-deleted shelters also remove their destination forecasts. Original
+Rails jobs/databases remain unchanged. Imported users, keys and other tables are
+copied unchanged into every newly validated generation.
+
+Publication is atomic only after every shelter has complete daily/hourly
+coverage and all copied table counts, foreign keys and SQLite integrity pass.
+A shared lease prevents overlap with manual sync. Failed staging can be retried
+safely in foreign-key dependency order. Two complete generations and protected
+migration exports remain available for recovery. Weather IDs use the Rust-only
+namespace starting at 4294967296. Homepage caching retains its existing two-hour
+behavior; shelter HTML and authenticated JSON read the active generation.
+
+Run manually: `gcloud run jobs execute at-forecast-rust-weather --project=at-forecast --region=us-east4 --wait`.
+To stop only this new schedule: `gcloud scheduler jobs pause at-forecast-rust-weather-daily --project=at-forecast --location=us-east4`.

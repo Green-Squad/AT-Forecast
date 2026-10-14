@@ -11,7 +11,7 @@ const reports=[];
 try {
   for(const width of [390,768,805,1280]) {
     const context=await browser.newContext({viewport:{width,height:900},deviceScaleFactor:1});
-    for(const route of ['/', '/about', '/shelters/1', '/shelters/2', '/shelters/3']) {
+    for(const route of ['/', '/about', '/shelters/2', '/shelters/3', '/shelters/4']) {
       const pages=[];
       for(const base of [rails,rust]) {
         const page=await context.newPage();

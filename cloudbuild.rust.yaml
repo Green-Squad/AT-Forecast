@@ -35,6 +35,8 @@ steps:
 
     cargo clippy --manifest-path rust/Cargo.toml --locked --all-targets -- -D warnings
 
+    export WEATHER_TEST_URL=http://fixture-sync:8080
+
     cargo test --manifest-path rust/Cargo.toml --locked -- --nocapture
 
 
@@ -106,6 +108,15 @@ steps:
   - --image
   - gcr.io/$PROJECT_ID/at-forecast-rust-sync:$COMMIT_SHA
   - --quiet
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+  entrypoint: bash
+  args:
+  - -ceu
+  - >-
+    if gcloud run jobs describe at-forecast-rust-weather --project=at-forecast --region=us-east4 >/dev/null 2>&1;
+    then gcloud run jobs update at-forecast-rust-weather --project=at-forecast --region=us-east4
+    --image=gcr.io/at-forecast/at-forecast-rust:$COMMIT_SHA --command=/usr/local/bin/at-forecast-weather --quiet;
+    fi
 options:
   logging: CLOUD_LOGGING_ONLY
   machineType: E2_HIGHCPU_8

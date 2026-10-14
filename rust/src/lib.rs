@@ -1,5 +1,6 @@
 pub mod db;
 pub mod remote;
+pub mod weather;
 use askama::Template;
 use axum::{
     Json, Router,

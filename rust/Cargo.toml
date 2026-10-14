@@ -1,5 +1,6 @@
 [package]
 name = "at-forecast"
+default-run = "at-forecast"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
@@ -18,6 +19,8 @@ tower = { version = "0.5", features = ["util"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 libsql = { version = "0.10.0", default-features = false, features = ["remote", "tls"] }
+
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 
 [dev-dependencies]
 http-body-util = "0.1"

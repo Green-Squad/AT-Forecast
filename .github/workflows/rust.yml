@@ -26,6 +26,7 @@ jobs:
       DATABASE_URL: postgres://forecast_reader:fixture-only@127.0.0.1:5432/at_forecast_test
       TURSO_DATABASE_URL: http://127.0.0.1:8083
       TURSO_AUTH_TOKEN: ""
+      WEATHER_TEST_URL: http://127.0.0.1:8085
       TURSO_TEST_DATABASE: isolated
       AT_FORECAST_TEST_DATABASE: isolated
       CACHE_MODE: 'off'

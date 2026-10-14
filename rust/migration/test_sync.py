@@ -116,6 +116,20 @@ class SyncTests(unittest.TestCase):
         good=self.snapshot({'shelters':[shelter],'weathers':[[2,1,'new']],'hourly_weathers':[[2,1,'new']]},True)
         self.assertEqual(forecast_sync(self.db,good,'good')['generation'],2);self.assertEqual(validate(self.db,good,2)[0]['normalized_checksums_match'],True)
         self.assertEqual(forecast_sync(self.db,good,'again')['method'],'unchanged-snapshot')
+    def test_provider_owned_forecasts_survive_source_refresh(self):
+        shelter=[1,{'$decimal':'1.250'},None]
+        self.initialize(self.snapshot({'shelters':[shelter],'weathers':[[1,1,'old']],'hourly_weathers':[[1,1,'old']]},True))
+        self.db.batch([("CREATE TABLE _rust_weather_state(id INTEGER PRIMARY KEY,owns_forecasts INTEGER)",()),("INSERT INTO _rust_weather_state VALUES(1,1)",()),("UPDATE _g1_weathers SET weather_date='rust-provider'",()),("UPDATE _g1_hourly_weathers SET date='rust-provider'",())])
+        source=self.snapshot({'shelters':[shelter],'weathers':[[100,1,'source-new']],'hourly_weathers':[[200,1,'source-new']]},True)
+        forecast_sync(self.db,source,'source-refresh')
+        self.assertEqual({r['weather_date'] for r in self.db.query('SELECT weather_date FROM _g1_weathers')},{'rust-provider'})
+        self.assertEqual({r['date'] for r in self.db.query('SELECT date FROM _g1_hourly_weathers')},{'rust-provider'})
+        self.assertEqual(forecast_sync(self.db,source,'retry')['method'],'unchanged-snapshot')
+        deleted=self.snapshot({'shelters':[],'weathers':[],'hourly_weathers':[]},True)
+        forecast_sync(self.db,deleted,'delete-shelter')
+        self.assertEqual(self.db.query('SELECT id FROM _g1_shelters'),[])
+        self.assertEqual(self.db.query('SELECT id FROM _g1_weathers'),[])
+
     def test_epoch_guard_and_overlap_lease(self):
         self.initialize(self.snapshot({'items':[[1,'old']]}));s=self.snapshot({'items':[[1,'new']]})
         self.assertTrue(acquire_lease(self.db,'one'));self.assertFalse(acquire_lease(self.db,'two'));release_lease(self.db,'two');self.assertFalse(acquire_lease(self.db,'two'));release_lease(self.db,'one');self.assertTrue(acquire_lease(self.db,'two'))

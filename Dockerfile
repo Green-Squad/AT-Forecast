@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app
 WORKDIR /app
 COPY --from=builder /build/rust/target/release/at-forecast /usr/local/bin/at-forecast
+COPY --from=builder /build/rust/target/release/weather_job /usr/local/bin/at-forecast-weather
 COPY public/assets/ ./public/assets/
 COPY public/favicon.ico public/robots.txt public/apple-touch-icon.png public/apple-touch-icon-precomposed.png ./public/
 ENV PORT=8080 PUBLIC_DIR=/app/public CACHE_DIR=/tmp/at-forecast-cache
