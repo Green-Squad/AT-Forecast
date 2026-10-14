@@ -2,7 +2,7 @@ steps:
 - name: bash
   args:
   - -ceu
-  - test "$PROJECT_ID" = "at-forecast"; test "$BRANCH_NAME" = rust
+  - test "$PROJECT_ID" = "at-forecast"; case "$BRANCH_NAME" in rust|master) ;; *) exit 1 ;; esac
 - name: gcr.io/cloud-builders/docker
   entrypoint: bash
   args:

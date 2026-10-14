@@ -1,9 +1,9 @@
 name: Rust baseline
 on:
   push:
-    branches: [rust]
+    branches: [rust, master]
   pull_request:
-    branches: [rust]
+    branches: [rust, master]
     paths: ['rust/**', 'tools/**', 'Dockerfile', '.github/workflows/rust.yml']
 permissions:
   contents: read
