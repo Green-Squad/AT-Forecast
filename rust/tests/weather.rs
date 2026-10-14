@@ -15,11 +15,27 @@ use std::sync::{
 struct Mock {
     mode: AtomicUsize,
     retry: AtomicUsize,
+    delay_ms: AtomicUsize,
+    active: AtomicUsize,
+    max_active: AtomicUsize,
+}
+struct Active<'a>(&'a AtomicUsize);
+impl Drop for Active<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
 }
 async fn forecast(
     State(state): State<Arc<Mock>>,
     OriginalUri(uri): OriginalUri,
 ) -> (StatusCode, Json<Value>) {
+    let active = state.active.fetch_add(1, Ordering::SeqCst) + 1;
+    let _active = Active(&state.active);
+    state.max_active.fetch_max(active, Ordering::SeqCst);
+    tokio::time::sleep(std::time::Duration::from_millis(
+        state.delay_ms.load(Ordering::SeqCst) as u64,
+    ))
+    .await;
     if state.mode.load(Ordering::SeqCst) == 1 {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -104,7 +120,14 @@ async fn provider_publication_retry_failure_and_overlap() {
         base: base.clone(),
         interval_ms: 0,
     };
+    mock.delay_ms.store(100, Ordering::SeqCst);
     let initial = run(settings()).await.unwrap();
+    assert_eq!(
+        mock.max_active.load(Ordering::SeqCst),
+        4,
+        "Slow responses should overlap, with no more than four in flight"
+    );
+    mock.delay_ms.store(0, Ordering::SeqCst);
     assert_eq!(initial["generation"], 2);
     assert_eq!(initial["daily_records"], 14);
     assert_eq!(initial["hourly_records"], 80);
