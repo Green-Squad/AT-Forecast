@@ -515,6 +515,7 @@ async fn update(c: &Connection, provider: &mut Provider, owner: &str) -> Result<
                 shelters_processed = index + 1,
                 shelters_total = shelters.len(),
                 provider_calls = provider.calls,
+                duration_seconds = started.elapsed().as_secs(),
                 "weather fetch progress"
             );
         }
@@ -729,7 +730,7 @@ pub async fn run(settings: Settings) -> Result<Json> {
         calls: 0,
     };
     let result =
-        match tokio::time::timeout(Duration::from_secs(1650), update(&c, &mut provider, &owner))
+        match tokio::time::timeout(Duration::from_secs(3300), update(&c, &mut provider, &owner))
             .await
         {
             Ok(r) => r,
