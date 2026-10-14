@@ -294,10 +294,8 @@ async fn insert_forecasts(
     c: &Connection,
     generation: i64,
     table: &str,
-    shelter: i64,
-    rows: &[Forecast],
+    rows: &[(i64, &Forecast, &str)],
     next: &mut i64,
-    created: &str,
 ) -> Result<()> {
     let daily = table == "weathers";
     let columns = if daily {
@@ -308,7 +306,7 @@ async fn insert_forecasts(
     for chunk in rows.chunks(50) {
         let mut args = Vec::new();
         let mut groups = Vec::new();
-        for r in chunk {
+        for (shelter, r, created) in chunk {
             if *next >= 9_007_199_254_740_991 {
                 return Err(Failure("ID exhaustion"));
             }
@@ -327,9 +325,9 @@ async fn insert_forecasts(
             }
             args.extend([
                 Value::Text(r.description.clone()),
-                Value::Integer(shelter),
-                Value::Text(created.into()),
-                Value::Text(created.into()),
+                Value::Integer(*shelter),
+                Value::Text((*created).into()),
+                Value::Text((*created).into()),
                 Value::Text(r.wind.clone()),
             ]);
             groups.push(format!(
@@ -542,36 +540,33 @@ async fn update(c: &Connection, provider: &Arc<Provider>, owner: &str) -> Result
     }
     let mut completed = 0;
     while let Some(result) = jobs.join_next().await {
-        let (id, daily, hourly, daily_created, hourly_created) =
-            result.map_err(|_| Failure("provider task"))??;
-        renew(c, owner).await?;
-        insert_forecasts(
-            c,
-            generation,
-            "weathers",
-            id,
-            &daily,
-            &mut next,
-            &daily_created,
-        )
-        .await?;
-        insert_forecasts(
-            c,
-            generation,
-            "hourly_weathers",
-            id,
-            &hourly,
-            &mut next,
-            &hourly_created,
-        )
-        .await?;
-        daily_count += daily.len();
-        hourly_count += hourly.len();
-        completed += 1;
-        if let Some(shelter) = pending.next() {
+        let mut batch = vec![result.map_err(|_| Failure("provider task"))??];
+        while let Some(result) = jobs.try_join_next() {
+            batch.push(result.map_err(|_| Failure("provider task"))??);
+        }
+        for shelter in pending.by_ref().take(batch.len()) {
             fetch_shelter(&mut jobs, Arc::clone(provider), shelter);
         }
-        if completed % 25 == 0 {
+        renew(c, owner).await?;
+        let daily: Vec<_> = batch
+            .iter()
+            .flat_map(|(id, daily, _, created, _)| {
+                daily.iter().map(move |row| (*id, row, created.as_str()))
+            })
+            .collect();
+        let hourly: Vec<_> = batch
+            .iter()
+            .flat_map(|(id, _, hourly, _, created)| {
+                hourly.iter().map(move |row| (*id, row, created.as_str()))
+            })
+            .collect();
+        insert_forecasts(c, generation, "weathers", &daily, &mut next).await?;
+        insert_forecasts(c, generation, "hourly_weathers", &hourly, &mut next).await?;
+        daily_count += daily.len();
+        hourly_count += hourly.len();
+        let previous = completed;
+        completed += batch.len();
+        if completed / 25 > previous / 25 || completed == shelters.len() {
             tracing::info!(
                 shelters_processed = completed,
                 shelters_total = shelters.len(),

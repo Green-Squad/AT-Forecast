@@ -112,7 +112,9 @@ It fetches the same seven-day daily and forty-step three-hour forecasts as Rails
 using the existing provider subscription without changing plans. Calls are
 admitted by one shared clock at least 1.2 seconds apart (50/minute), including
 retries. Up to four requests are in flight, with only four shelters queued;
-fetching overlaps bounded database batches. Rate-limit responses cancel pending
+fetching overlaps bounded database batches. Completed shelters are coalesced into
+50-row insert batches; at most four completed shelters are held for publication
+while the next four fetches proceed. Rate-limit responses cancel pending
 work and stop the run. The free account dashboard confirms 60/minute, so this
 leaves ten calls/minute of headroom. Network
 timeouts and the total job deadline are bounded. Credentials, request URLs,
