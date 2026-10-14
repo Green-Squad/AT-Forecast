@@ -17,7 +17,12 @@ try {
         const page=await context.newPage();
         await page.route(/googletagmanager\.com|google-analytics\.com/,r=>r.abort());
         const response=await page.goto(base+route,{waitUntil:'networkidle'});
-        assert.equal(response.status(),200,route);pages.push(page);
+        assert.equal(response.status(),200,route);
+        const stylesheet=await page.locator('link[rel=stylesheet]').getAttribute('href');
+        const css=await page.request.get(new URL(stylesheet,page.url()).href);
+        assert.equal(css.status(),200,`${base}: comparison stylesheet must be served`);
+        assert.ok(await page.evaluate(()=>document.styleSheets.length>0),'Stylesheet must be loaded');
+        pages.push(page);
       }
       const states=['normal','hover-about','focus-github',...(route==='/'?['expanded-state']:[])];
       for(const state of states) {
