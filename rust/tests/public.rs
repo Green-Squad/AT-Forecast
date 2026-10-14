@@ -196,7 +196,7 @@ async fn public_routes_preserve_responses_with_bounded_queries() {
     );
     let (status, h, _) = request(
         &app,
-        "/assets/application-b59033ab8ad24fde02de9fa762f451c4bad71c6cf9625c815562e16384cbb797.css",
+        "/assets/application-7c3793d66b8fdd89438fbe0564edadeff835d8821d505f2f6483eb96f7f96c1b.css",
     )
     .await;
     assert_eq!(status, StatusCode::OK);

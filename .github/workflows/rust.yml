@@ -87,6 +87,11 @@ jobs:
           python3 tools/compare.py --rails http://127.0.0.1:8082 --rust http://127.0.0.1:8080 | tee benchmark-results/parity.txt
           python3 tools/benchmark.py --base http://127.0.0.1:8082 --requests 100 --concurrency 1 > benchmark-results/rails-c1.json
           python3 tools/benchmark.py --base http://127.0.0.1:8082 --requests 100 --concurrency 5 > benchmark-results/rails-c5.json
+      - name: Compare rendered desktop and mobile layout with original Rails
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.64.0
+          npx playwright install --with-deps chromium --only-shell
+          node tools/visual_parity.mjs http://127.0.0.1:8082 http://127.0.0.1:8080
       - uses: actions/upload-artifact@v4
         if: always()
         with:
