@@ -266,11 +266,11 @@ fn fetch_shelter(
         let (daily, hourly) = tokio::try_join!(
             async {
                 let rows = provider.fetch(&lat, &lon, true).await?;
-                Ok::<_, Failure>((rows, Utc::now().format("%Y-%m-%dT%H:%M:%S%.6f").to_string()))
+                Ok::<_, Failure>((rows, Utc::now().format("%Y-%m-%d %H:%M:%S%.6f").to_string()))
             },
             async {
                 let rows = provider.fetch(&lat, &lon, false).await?;
-                Ok::<_, Failure>((rows, Utc::now().format("%Y-%m-%dT%H:%M:%S%.6f").to_string()))
+                Ok::<_, Failure>((rows, Utc::now().format("%Y-%m-%d %H:%M:%S%.6f").to_string()))
             }
         )?;
         Ok((id, daily.0, hourly.0, daily.1, hourly.1))
@@ -312,7 +312,7 @@ async fn insert_forecasts(
             }
             let date = chrono::DateTime::from_timestamp(r.time, 0)
                 .ok_or(Failure("forecast time"))?
-                .format("%Y-%m-%dT%H:%M:%S%.6f")
+                .format("%Y-%m-%d %H:%M:%S%.6f")
                 .to_string();
             args.extend([
                 Value::Integer(*next),
