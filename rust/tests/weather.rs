@@ -104,7 +104,7 @@ async fn provider_publication_retry_failure_and_overlap() {
             .await
             .unwrap();
     }
-    c.execute_batch("CREATE TABLE _migration_state(id INTEGER PRIMARY KEY,generation INTEGER,schema_sha256 TEXT,source_snapshot_utc TEXT,published_utc TEXT,syncing INTEGER DEFAULT 0); INSERT INTO _migration_state VALUES(1,1,'fixture','fixture','fixture',0); CREATE TABLE _source_fingerprints(table_name TEXT PRIMARY KEY); INSERT INTO _source_fingerprints VALUES('states'),('shelters'),('keys'),('weathers'),('hourly_weathers'); CREATE TABLE _migration_reports(generation INTEGER PRIMARY KEY,report TEXT); CREATE TABLE _sync_runs(run_id TEXT PRIMARY KEY,report TEXT); CREATE TABLE _sync_lease(id INTEGER PRIMARY KEY,owner TEXT,expires_utc TEXT); CREATE TABLE _g1_states(id INTEGER PRIMARY KEY,name TEXT); INSERT INTO _g1_states VALUES(1,'fixture'); CREATE TABLE _g1_shelters(id INTEGER PRIMARY KEY,latt TEXT,long TEXT,state_id INTEGER REFERENCES _g1_states(id)); INSERT INTO _g1_shelters VALUES(1,'35.1','-81.1',1),(2,'35.2','-81.2',1); CREATE INDEX _g1_shelter_state ON _g1_shelters(state_id); CREATE TABLE _g1_keys(id INTEGER PRIMARY KEY,key TEXT); INSERT INTO _g1_keys VALUES(1,'fixture-private'); CREATE TABLE _g1_weathers(id INTEGER PRIMARY KEY,weather_date TEXT,high INTEGER,low INTEGER,description TEXT,shelter_id INTEGER REFERENCES _g1_shelters(id),created_at TEXT,updated_at TEXT,wind TEXT); CREATE TABLE _g1_hourly_weathers(id INTEGER PRIMARY KEY,date TEXT,temp INTEGER,description TEXT,shelter_id INTEGER REFERENCES _g1_shelters(id),created_at TEXT,updated_at TEXT,wind TEXT);").await.unwrap();
+    c.execute_batch("CREATE TABLE _migration_state(id INTEGER PRIMARY KEY,generation INTEGER,schema_sha256 TEXT,source_snapshot_utc TEXT,published_utc TEXT,syncing INTEGER DEFAULT 0); INSERT INTO _migration_state VALUES(1,1,'fixture','fixture','fixture',0); CREATE TABLE _source_fingerprints(table_name TEXT PRIMARY KEY); INSERT INTO _source_fingerprints VALUES('states'),('shelters'),('keys'),('weathers'),('hourly_weathers'); CREATE TABLE _migration_reports(generation INTEGER PRIMARY KEY,report TEXT); CREATE TABLE _sync_runs(run_id TEXT PRIMARY KEY,report TEXT); CREATE TABLE _sync_lease(id INTEGER PRIMARY KEY,owner TEXT,expires_utc TEXT); CREATE TABLE _g1_states(id INTEGER PRIMARY KEY,name TEXT); INSERT INTO _g1_states VALUES(1,'fixture'); CREATE TABLE _g1_shelters(id INTEGER PRIMARY KEY,latt TEXT,long TEXT,state_id INTEGER REFERENCES _g1_states(id)); INSERT INTO _g1_shelters VALUES(1,'35.1','-81.1',1),(2,'35.2','-81.2',1); CREATE INDEX _g1_shelter_state ON _g1_shelters(state_id); CREATE TABLE _g1_keys(id INTEGER PRIMARY KEY AUTOINCREMENT,key TEXT); INSERT INTO _g1_keys VALUES(1,'fixture-private'); UPDATE sqlite_sequence SET seq=42 WHERE name='_g1_keys'; CREATE TABLE _g1_weathers(id INTEGER PRIMARY KEY,weather_date TEXT,high INTEGER,low INTEGER,description TEXT,shelter_id INTEGER REFERENCES _g1_shelters(id),created_at TEXT,updated_at TEXT,wind TEXT); CREATE TABLE _g1_hourly_weathers(id INTEGER PRIMARY KEY,date TEXT,temp INTEGER,description TEXT,shelter_id INTEGER REFERENCES _g1_shelters(id),created_at TEXT,updated_at TEXT,wind TEXT);").await.unwrap();
     let mock = Arc::new(Mock::default());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
@@ -131,6 +131,21 @@ async fn provider_publication_retry_failure_and_overlap() {
     assert_eq!(initial["generation"], 2);
     assert_eq!(initial["daily_records"], 14);
     assert_eq!(initial["hourly_records"], 80);
+    let mut sequence = c
+        .query("SELECT seq FROM sqlite_sequence WHERE name='_g2_keys'", ())
+        .await
+        .unwrap();
+    assert_eq!(
+        sequence
+            .next()
+            .await
+            .unwrap()
+            .unwrap()
+            .get::<i64>(0)
+            .unwrap(),
+        42
+    );
+
     let count = |table: &str| format!("SELECT COUNT(*) FROM {table}");
     let mut rows = c.query(&count("_g2_weathers"), ()).await.unwrap();
     assert_eq!(

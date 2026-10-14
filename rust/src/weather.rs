@@ -581,6 +581,32 @@ async fn update(c: &Connection, provider: &Arc<Provider>, owner: &str) -> Result
             );
         }
     }
+    // Keep generated-ID allocation metadata for copied tables, including deleted high IDs.
+    if scalar(
+        c,
+        "SELECT COUNT(*) FROM sqlite_master WHERE name='sqlite_sequence'",
+        vec![],
+    )
+    .await?
+        > 0
+    {
+        for table in &tables {
+            let mut sequences = c
+                .query(
+                    "SELECT seq FROM sqlite_sequence WHERE name=?",
+                    [format!("_g{old}_{table}")],
+                )
+                .await?;
+            if let Some(row) = sequences.next().await? {
+                let previous: i64 = row.get(0)?;
+                c.execute(
+                    "UPDATE sqlite_sequence SET seq=MAX(seq,?) WHERE name=?",
+                    (previous, format!("_g{generation}_{table}")),
+                )
+                .await?;
+            }
+        }
+    }
     counts.insert("weathers".into(), daily_count as i64);
     counts.insert("hourly_weathers".into(), hourly_count as i64);
     for table in &tables {
