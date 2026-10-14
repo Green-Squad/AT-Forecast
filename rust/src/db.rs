@@ -67,7 +67,7 @@ pub struct StateView {
 }
 #[derive(Debug, Deserialize)]
 pub struct Daily {
-    pub id: i32,
+    pub id: i64,
     #[serde(deserialize_with = "crate::remote::datetime")]
     pub weather_date: NaiveDateTime,
     pub high: i32,
@@ -81,7 +81,7 @@ pub struct Daily {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Hourly {
     pub shelter_id: i32,
-    pub id: i32,
+    pub id: i64,
     #[serde(deserialize_with = "crate::remote::datetime")]
     pub date: NaiveDateTime,
     pub temp: Option<i32>,

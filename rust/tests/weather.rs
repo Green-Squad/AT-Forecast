@@ -146,6 +146,23 @@ async fn provider_publication_retry_failure_and_overlap() {
         42
     );
 
+    // Decode published provider records through the website's actual data-access path.
+    let site_pool =
+        at_forecast::remote::Pool::from_database(database, std::time::Duration::from_secs(5));
+    let site = site_pool.read().await.unwrap();
+    let daily: Vec<at_forecast::db::Daily> = site
+        .rows("SELECT * FROM weathers ORDER BY id", vec![])
+        .await
+        .unwrap();
+    let hourly: Vec<at_forecast::db::Hourly> = site
+        .rows("SELECT * FROM hourly_weathers ORDER BY id", vec![])
+        .await
+        .unwrap();
+    assert_eq!(daily.len(), 14);
+    assert_eq!(hourly.len(), 80);
+    assert!(daily.iter().all(|r| r.id >= 4294967296));
+    assert!(hourly.iter().all(|r| r.id >= 4294967296));
+    drop(site);
     let count = |table: &str| format!("SELECT COUNT(*) FROM {table}");
     let mut rows = c.query(&count("_g2_weathers"), ()).await.unwrap();
     assert_eq!(

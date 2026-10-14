@@ -19,6 +19,12 @@ pub struct Session {
 }
 
 impl Pool {
+    pub fn from_database(database: Database, timeout: Duration) -> Self {
+        Self {
+            database: Arc::new(database),
+            timeout,
+        }
+    }
     pub async fn from_env(timeout: Duration) -> Result<Self, String> {
         let url = env::var("TURSO_DATABASE_URL").map_err(|_| "Missing TURSO_DATABASE_URL")?;
         let isolated = env::var("TURSO_TEST_DATABASE").as_deref() == Ok("isolated")
@@ -36,10 +42,7 @@ impl Pool {
         .await
         .map_err(|_| "Database initialization timed out")?
         .map_err(|_| "Database initialization failed")?;
-        Ok(Self {
-            database: Arc::new(database),
-            timeout,
-        })
+        Ok(Self::from_database(database, timeout))
     }
 
     pub async fn read(&self) -> Result<Session, Unavailable> {
