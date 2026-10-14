@@ -2,7 +2,7 @@
 async fn main() {
     tracing_subscriber::fmt()
         .json()
-        .with_env_filter("at_forecast=info")
+        .with_env_filter("info")
         .init();
     match at_forecast::weather::run_from_env().await {
         Ok(report) => tracing::info!(report=%report,"weather job completed"),

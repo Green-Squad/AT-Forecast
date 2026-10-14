@@ -114,7 +114,7 @@ spaced at least 2.1 seconds apart and rate-limit responses stop the run. Network
 timeouts and the total job deadline are bounded. Credentials, request URLs,
 provider payloads and user records are excluded from production logs.
 
-The intended daily schedule is 00:30 America/New_York, after the original daily
+The intended daily schedule is 02:00 America/New_York, after the original daily
 updater. It uses only Rust resources and the private Virginia Turso database.
 The source-database sync remains manual. All source refreshes preserve
 provider-owned forecasts after the first successful weather publication;

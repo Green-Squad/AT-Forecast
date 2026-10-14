@@ -699,7 +699,7 @@ pub async fn run(settings: Settings) -> Result<Json> {
     }
     let database = tokio::time::timeout(
         Duration::from_secs(15),
-        Builder::new_remote(url, token).build(),
+        Builder::new_remote(url, token.trim().to_owned()).build(),
     )
     .await
     .map_err(|_| Failure("database timeout"))??;
