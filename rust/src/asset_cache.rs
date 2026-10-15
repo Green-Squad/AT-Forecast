@@ -22,13 +22,13 @@ pub fn url(path: &str) -> String {
     } else {
         format!("#{fragment}")
     };
-    format!("{path}{separator}v={VERSION}{fragment}")
+    format!("{path}{separator}__release={VERSION}{fragment}")
 }
 fn versioned(query: Option<&str>) -> bool {
     query.is_some_and(|q| {
         q.split('&').any(|p| {
             p.split_once('=')
-                .is_some_and(|(k, v)| k == "v" && !v.is_empty())
+                .is_some_and(|(k, v)| k == "__release" && !v.is_empty())
         })
     })
 }
@@ -99,14 +99,14 @@ mod tests {
         assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
         assert_eq!(
             response.headers()[header::LOCATION],
-            format!("/fonts/font.woff?format=x&v={VERSION}")
+            format!("/fonts/font.woff?format=x&__release={VERSION}")
         );
         assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
         let response = app
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri(format!("/fonts/font.woff?v={VERSION}"))
+                    .uri(format!("/fonts/font.woff?__release={VERSION}"))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -120,7 +120,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri(format!("/fonts/missing.woff?v={VERSION}"))
+                    .uri(format!("/fonts/missing.woff?__release={VERSION}"))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -133,11 +133,12 @@ mod tests {
     fn fragments_and_content_addressed_uploads_keep_their_meaning() {
         assert_eq!(
             url("/fonts/a.eot?#iefix"),
-            format!("/fonts/a.eot?&v={VERSION}#iefix")
+            format!("/fonts/a.eot?&__release={VERSION}#iefix")
         );
         assert_eq!(url("/rust-media/hash.png"), "/rust-media/hash.png");
         assert_eq!(url(""), "");
         assert!(!versioned(Some("preview=x")));
-        assert!(!versioned(Some("v=")));
+        assert!(!versioned(Some("v=4.7.0")));
+        assert!(!versioned(Some("__release=")));
     }
 }

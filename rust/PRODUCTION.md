@@ -42,7 +42,7 @@ client deserialization, dates and nulls. Never truncate an unchecked integer.
 ## Cloudflare and release cache keys
 
 Cloud Build passes the exact commit SHA as the Docker ASSET_VERSION build arg.
-Rendered local asset URLs carry ?v=<commit>; unversioned public-asset requests
+Rendered local asset URLs carry ?__release=<commit>; unversioned public-asset requests
 (including relative font/image dependencies in stylesheets) redirect to a
 release-keyed URL with no-store on the redirect. Successful versioned assets
 retain explicit origin cache headers or default to public max-age=86400. Errors

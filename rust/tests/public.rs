@@ -196,7 +196,7 @@ async fn public_routes_preserve_responses_with_bounded_queries() {
     );
     let (status, h, _) = request(
         &app,
-        &format!("/assets/application-7c3793d66b8fdd89438fbe0564edadeff835d8821d505f2f6483eb96f7f96c1b.css?v={}", at_forecast::asset_cache::VERSION),
+        &format!("/assets/application-7c3793d66b8fdd89438fbe0564edadeff835d8821d505f2f6483eb96f7f96c1b.css?__release={}", at_forecast::asset_cache::VERSION),
     )
     .await;
     assert_eq!(status, StatusCode::OK);
@@ -206,7 +206,10 @@ async fn public_routes_preserve_responses_with_bounded_queries() {
     assert_eq!(status, StatusCode::TEMPORARY_REDIRECT);
     assert_eq!(
         h["location"],
-        format!("/favicon.ico?v={}", at_forecast::asset_cache::VERSION)
+        format!(
+            "/favicon.ico?__release={}",
+            at_forecast::asset_cache::VERSION
+        )
     );
     assert_eq!(h["cache-control"], "no-store");
 
