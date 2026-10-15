@@ -107,12 +107,23 @@ impl Hourly {
     }
 }
 impl DayView {
-    pub fn json(&self, cfg: &Config) -> Value {
-        json!({"daily_weather_id":self.daily.id,"weather_date":iso(self.daily.weather_date,cfg),
+    pub fn json(&self, cfg: &Config) -> Result<Value, Error> {
+        let daily_id = crate::forecast_id::public_id(self.daily.id).ok_or(Error::Unavailable)?;
+        let hourly = self
+            .hourly
+            .iter()
+            .map(|h| {
+                let id = crate::forecast_id::public_id(h.id).ok_or(Error::Unavailable)?;
+                Ok(json!({"hourly_weather_id":id,"date":iso(h.date,cfg),
+                "temp":h.temp,"description":h.description,"wind":h.wind}))
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
+        Ok(
+            json!({"daily_weather_id":daily_id,"weather_date":iso(self.daily.weather_date,cfg),
             "high":self.daily.high,"low":self.daily.low,"description":self.daily.description,
             "wind":self.daily.wind,"shelter_id":self.daily.shelter_id,
-            "hourly_weather":self.hourly.iter().map(|h|json!({"hourly_weather_id":h.id,"date":iso(h.date,cfg),
-                "temp":h.temp,"description":h.description,"wind":h.wind})).collect::<Vec<_>>()})
+            "hourly_weather":hourly}),
+        )
     }
 }
 fn local_date(n: NaiveDateTime, zone: Tz) -> chrono::DateTime<Tz> {
@@ -394,6 +405,67 @@ pub fn haversine(a: f64, b: f64, c: f64, d: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_forecast_json_preserves_android_integer_and_date_contract() {
+        // Mirrors the installed Android DailyWeather/HourlyWeather Integer fields.
+        #[derive(Deserialize)]
+        struct AndroidHourly {
+            hourly_weather_id: i32,
+            date: String,
+            temp: Option<i32>,
+        }
+        #[derive(Deserialize)]
+        struct AndroidDaily {
+            daily_weather_id: i32,
+            weather_date: String,
+            hourly_weather: Vec<AndroidHourly>,
+        }
+        let cfg = Config {
+            query_timeout: Duration::from_secs(5),
+            cache: false,
+            cache_dir: "/tmp/unused".into(),
+            public_dir: "public".into(),
+            database_timezone: chrono_tz::UTC,
+            display_timezone: chrono_tz::America::New_York,
+            analytics: false,
+        };
+        let date =
+            NaiveDateTime::parse_from_str("2026-10-14 17:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
+        let day = DayView {
+            daily: Daily {
+                id: crate::forecast_id::NATIVE_START + 13_213,
+                weather_date: date,
+                high: 60,
+                low: 40,
+                description: "clear sky".into(),
+                wind: None,
+                shelter_id: 2,
+                created_at: date,
+            },
+            hourly: vec![Hourly {
+                id: crate::forecast_id::NATIVE_START + 13_214,
+                shelter_id: 2,
+                date,
+                temp: None,
+                description: None,
+                wind: None,
+            }],
+            date_label: String::new(),
+            category: "clear",
+            times: vec![],
+        };
+        let body = day.json(&cfg).unwrap();
+        let parsed: AndroidDaily = serde_json::from_value(body.clone()).unwrap();
+        assert_eq!(parsed.daily_weather_id, 1_000_013_213);
+        assert_eq!(parsed.hourly_weather[0].hourly_weather_id, 1_000_013_214);
+        assert_eq!(parsed.weather_date, "2026-10-14T13:00:00.000-04:00");
+        assert_eq!(parsed.hourly_weather[0].date, parsed.weather_date);
+        assert!(parsed.hourly_weather[0].temp.is_none());
+        assert!(body["wind"].is_null());
+        let mut broken = body;
+        broken["daily_weather_id"] = json!(day.daily.id);
+        assert!(serde_json::from_value::<AndroidDaily>(broken).is_err());
+    }
     #[test]
     fn decimals_and_weather_categories_match_rails() {
         assert_eq!(decimal_text(&"630.000".parse().unwrap()), "630.0");

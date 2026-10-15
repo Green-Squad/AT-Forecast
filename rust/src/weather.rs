@@ -307,7 +307,7 @@ async fn insert_forecasts(
         let mut args = Vec::new();
         let mut groups = Vec::new();
         for (shelter, r, created) in chunk {
-            if *next >= 9_007_199_254_740_991 {
+            if crate::forecast_id::public_id(*next).is_none() {
                 return Err(Failure("ID exhaustion"));
             }
             let date = chrono::DateTime::from_timestamp(r.time, 0)

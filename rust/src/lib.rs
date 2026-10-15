@@ -1,4 +1,5 @@
 pub mod db;
+pub mod forecast_id;
 pub mod remote;
 pub mod weather;
 use askama::Template;
@@ -356,7 +357,7 @@ async fn dispatch(
                 for s in shelters {
                     let days = forecasts.remove(&s.id).unwrap_or_default();
                     output.push(json!({"shelter_id":s.id,"name":s.name,"mileage":s.mileage_text(),"elevation":s.elevation,
-                        "southbound_mileage":s.southbound(),"daily_weather":days.iter().map(|d|d.json(cfg)).collect::<Vec<_>>() }));
+                        "southbound_mileage":s.southbound(),"daily_weather":days.iter().map(|d|d.json(cfg)).collect::<Result<Vec<_>,_>>()? }));
                 }
                 // Match caches_page writes but never read these files or bypass API authentication.
                 if cfg.cache {
