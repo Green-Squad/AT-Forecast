@@ -1,6 +1,8 @@
 FROM rust:1.99-slim-trixie AS builder
 WORKDIR /build
 COPY rust/ ./rust/
+ARG ASSET_VERSION=development
+ENV ASSET_VERSION=$ASSET_VERSION
 RUN cargo build --locked --release --manifest-path rust/Cargo.toml
 
 FROM debian:trixie-slim AS runtime

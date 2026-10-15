@@ -1,3 +1,4 @@
+pub mod asset_cache;
 pub mod db;
 pub mod forecast_id;
 pub mod remote;
@@ -7,6 +8,7 @@ use axum::{
     Json, Router,
     extract::{Query, State},
     http::{HeaderValue, StatusCode, Uri},
+    middleware,
     response::{Html, IntoResponse, Response},
     routing::get,
 };
@@ -86,10 +88,7 @@ pub struct App {
 pub fn router(app: App) -> Router {
     let assets = ServeDir::new(app.config.public_dir.join("assets"));
     let icons = ServeDir::new(app.config.public_dir.clone());
-    let asset_headers = SetResponseHeaderLayer::if_not_present(
-        axum::http::header::CACHE_CONTROL,
-        HeaderValue::from_static("public, max-age=86400"),
-    );
+    let asset_headers = middleware::from_fn(asset_cache::serve);
     // Only public static paths are reachable: never expose Rails' cached_pages API responses.
     Router::new()
         .route("/", get(handle))
@@ -101,7 +100,14 @@ pub fn router(app: App) -> Router {
         .route("/healthz", get(|| async { Json(json!({"status":"ok"})) }))
         .nest_service("/assets", asset_headers.clone().layer(assets))
         .route_service("/favicon.ico", asset_headers.clone().layer(icons.clone()))
-        .route_service("/robots.txt", asset_headers.clone().layer(icons.clone()))
+        .route_service(
+            "/robots.txt",
+            SetResponseHeaderLayer::if_not_present(
+                axum::http::header::CACHE_CONTROL,
+                HeaderValue::from_static("no-cache"),
+            )
+            .layer(icons.clone()),
+        )
         .route_service(
             "/apple-touch-icon.png",
             asset_headers.clone().layer(icons.clone()),
@@ -172,12 +178,14 @@ fn public_error(error: Error, json_format: bool) -> Response {
 #[derive(Template)]
 #[template(path = "home.html")]
 struct HomeTemplate {
+    asset_version: &'static str,
     states: Vec<StateView>,
     analytics: bool,
 }
 #[derive(Template)]
 #[template(path = "shelter.html")]
 struct ShelterTemplate {
+    asset_version: &'static str,
     shelter: Shelter,
     days: Vec<DayView>,
     previous: Option<Shelter>,
@@ -189,6 +197,7 @@ struct ShelterTemplate {
 #[derive(Template)]
 #[template(path = "about.html")]
 struct AboutTemplate {
+    asset_version: &'static str,
     analytics: bool,
 }
 fn render(t: impl Template) -> Result<Response, Error> {
@@ -293,6 +302,7 @@ async fn dispatch(
                     return Ok(Html(html).into_response());
                 }
                 let html = HomeTemplate {
+                    asset_version: asset_cache::VERSION,
                     states: db.states(true, cfg).await?,
                     analytics: cfg.analytics,
                 }
@@ -305,6 +315,7 @@ async fn dispatch(
             }
         }
         "/about" => render(AboutTemplate {
+            asset_version: asset_cache::VERSION,
             analytics: cfg.analytics,
         }),
         "/nearest_shelter" => {
@@ -431,6 +442,7 @@ async fn shelter_html(
     }
     let id = s.id;
     let html = ShelterTemplate {
+        asset_version: asset_cache::VERSION,
         shelter: s,
         days,
         previous,

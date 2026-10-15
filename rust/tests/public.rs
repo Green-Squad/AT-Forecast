@@ -196,12 +196,20 @@ async fn public_routes_preserve_responses_with_bounded_queries() {
     );
     let (status, h, _) = request(
         &app,
-        "/assets/application-7c3793d66b8fdd89438fbe0564edadeff835d8821d505f2f6483eb96f7f96c1b.css",
+        &format!("/assets/application-7c3793d66b8fdd89438fbe0564edadeff835d8821d505f2f6483eb96f7f96c1b.css?v={}", at_forecast::asset_cache::VERSION),
     )
     .await;
     assert_eq!(status, StatusCode::OK);
     assert!(h["content-type"].to_str().unwrap().starts_with("text/css"));
     assert_eq!(h["cache-control"], "public, max-age=86400");
+    let (status, h, _) = request(&app, "/favicon.ico").await;
+    assert_eq!(status, StatusCode::TEMPORARY_REDIRECT);
+    assert_eq!(
+        h["location"],
+        format!("/favicon.ico?v={}", at_forecast::asset_cache::VERSION)
+    );
+    assert_eq!(h["cache-control"], "no-store");
+
     let mut cached = app.clone();
     cached.config.cache = true;
     cached.config.cache_dir =

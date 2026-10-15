@@ -38,3 +38,21 @@ successful weather publication. The job rejects exhaustion before publication,
 keeping the last valid dataset. There is no separate native ID namespace or API
 ID translation. Regression tests cover sequence continuation, retries, exhaustion,
 client deserialization, dates and nulls. Never truncate an unchecked integer.
+
+## Cloudflare and release cache keys
+
+Cloud Build passes the exact commit SHA as the Docker ASSET_VERSION build arg.
+Rendered local asset URLs carry ?v=<commit>; unversioned public-asset requests
+(including relative font/image dependencies in stylesheets) redirect to a
+release-keyed URL with no-store on the redirect. Successful versioned assets
+retain explicit origin cache headers or default to public max-age=86400. Errors
+are no-store. Content-addressed Rust uploads retain their existing immutable
+URLs. HTML, account/admin responses and authenticated APIs remain no-store and
+never use this asset middleware. robots.txt is revalidated without versioning.
+
+Keep Cloudflare Caching Level Standard and include query strings in cache keys.
+Do not create Cache Everything rules or ignore query strings. A deployment or
+code rollback automatically changes/reuses the matching release cache key;
+there is no purge token, scheduled invalidation or separate manual purge step.
+Cached old releases expire naturally. Normal in-page data mutations retain their
+existing behavior. An already-open page is not forcibly reloaded.

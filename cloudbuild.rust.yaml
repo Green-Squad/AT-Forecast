@@ -46,6 +46,8 @@ steps:
 - name: gcr.io/cloud-builders/docker
   args:
   - build
+  - --build-arg
+  - ASSET_VERSION=$COMMIT_SHA
   - -f
   - Dockerfile
   - -t
