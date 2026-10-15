@@ -30,13 +30,11 @@ must never be committed.
 
 ## Android forecast ID compatibility
 
-The Android v2 DTOs use Kotlin `Int` for daily/hourly forecast IDs, as did the
-original Java client. Imported Rails IDs are returned unchanged. Native weather
-storage IDs start at 4,294,967,296; JSON maps these deterministically to positive
-IDs starting at 1,000,000,000. Recovery verified original imported maxima below
-8.2 million, outside this new public namespace. No database IDs or records are
-rewritten. Daily/hourly arrays, dates, nulls and other fields retain their format.
-The job fails before publication if a generated ID cannot fit the public signed
-32-bit range, so readers retain the last valid dataset. Never expose native
-storage IDs directly or truncate them with an unchecked integer cast. Regression
-tests deserialize serialized native forecasts through signed 32-bit client fields.
+Stored and public forecast IDs use the original positive signed-32-bit contract.
+Daily and hourly weather each continue their own Rails sequence. Persistent
+per-table high-water marks, current maximum IDs and SQLite allocation metadata
+prevent reuse after replacement/deletion. Counters advance atomically only with
+successful weather publication. The job rejects exhaustion before publication,
+keeping the last valid dataset. There is no separate native ID namespace or API
+ID translation. Regression tests cover sequence continuation, retries, exhaustion,
+client deserialization, dates and nulls. Never truncate an unchecked integer.

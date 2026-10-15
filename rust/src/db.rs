@@ -406,7 +406,7 @@ pub fn haversine(a: f64, b: f64, c: f64, d: f64) -> f64 {
 mod tests {
     use super::*;
     #[test]
-    fn native_forecast_json_preserves_android_integer_and_date_contract() {
+    fn forecast_json_preserves_android_integer_and_date_contract() {
         // Mirrors the installed Android DailyWeather/HourlyWeather Integer fields.
         #[derive(Deserialize)]
         struct AndroidHourly {
@@ -433,7 +433,7 @@ mod tests {
             NaiveDateTime::parse_from_str("2026-10-14 17:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
         let day = DayView {
             daily: Daily {
-                id: crate::forecast_id::NATIVE_START + 13_213,
+                id: 1_428_139,
                 weather_date: date,
                 high: 60,
                 low: 40,
@@ -443,7 +443,7 @@ mod tests {
                 created_at: date,
             },
             hourly: vec![Hourly {
-                id: crate::forecast_id::NATIVE_START + 13_214,
+                id: 8_160_071,
                 shelter_id: 2,
                 date,
                 temp: None,
@@ -456,14 +456,14 @@ mod tests {
         };
         let body = day.json(&cfg).unwrap();
         let parsed: AndroidDaily = serde_json::from_value(body.clone()).unwrap();
-        assert_eq!(parsed.daily_weather_id, 1_000_013_213);
-        assert_eq!(parsed.hourly_weather[0].hourly_weather_id, 1_000_013_214);
+        assert_eq!(parsed.daily_weather_id, 1_428_139);
+        assert_eq!(parsed.hourly_weather[0].hourly_weather_id, 8_160_071);
         assert_eq!(parsed.weather_date, "2026-10-14T13:00:00.000-04:00");
         assert_eq!(parsed.hourly_weather[0].date, parsed.weather_date);
         assert!(parsed.hourly_weather[0].temp.is_none());
         assert!(body["wind"].is_null());
         let mut broken = body;
-        broken["daily_weather_id"] = json!(day.daily.id);
+        broken["daily_weather_id"] = json!(4_294_967_296i64);
         assert!(serde_json::from_value::<AndroidDaily>(broken).is_err());
     }
     #[test]

@@ -290,6 +290,46 @@ async fn renew(c: &Connection, owner: &str) -> Result<()> {
     }
     Ok(())
 }
+async fn next_forecast_id(c: &Connection, generation: i64, table: &str) -> Result<i64> {
+    let physical = format!("_g{generation}_{table}");
+    let mut previous = scalar(
+        c,
+        &format!("SELECT COALESCE(MAX(id),0) FROM {}", ident(&physical)?),
+        vec![],
+    )
+    .await?;
+    if scalar(
+        c,
+        "SELECT COUNT(*) FROM sqlite_master WHERE name='sqlite_sequence'",
+        vec![],
+    )
+    .await?
+        > 0
+    {
+        let mut rows = c
+            .query("SELECT seq FROM sqlite_sequence WHERE name=?", [physical])
+            .await?;
+        if let Some(row) = rows.next().await? {
+            previous = previous.max(row.get::<i64>(0)?);
+        }
+    }
+    let mut next = previous.checked_add(1).ok_or(Failure("ID exhaustion"))?;
+    let mut rows = c
+        .query(
+            "SELECT next_id FROM _rust_weather_sequences WHERE table_name=?",
+            [table],
+        )
+        .await?;
+    if let Some(row) = rows.next().await? {
+        next = next.max(row.get::<i64>(0)?);
+    }
+    if crate::forecast_id::public_id(next).is_none() {
+        return Err(Failure(
+            "ID exhaustion or forecast sequence migration required",
+        ));
+    }
+    Ok(next)
+}
 async fn insert_forecasts(
     c: &Connection,
     generation: i64,
@@ -381,18 +421,15 @@ async fn update(c: &Connection, provider: &Arc<Provider>, owner: &str) -> Result
     {
         return Err(Failure("application schema"));
     }
-    c.execute("CREATE TABLE IF NOT EXISTS _rust_weather_state(id INTEGER PRIMARY KEY CHECK(id=1),owns_forecasts INTEGER NOT NULL DEFAULT 0,generation INTEGER NOT NULL DEFAULT 0,next_id INTEGER NOT NULL DEFAULT 4294967296,refreshed_utc TEXT NOT NULL DEFAULT '')",()).await?;
+    c.execute("CREATE TABLE IF NOT EXISTS _rust_weather_state(id INTEGER PRIMARY KEY CHECK(id=1),owns_forecasts INTEGER NOT NULL DEFAULT 0,generation INTEGER NOT NULL DEFAULT 0,next_id INTEGER NOT NULL DEFAULT 1,refreshed_utc TEXT NOT NULL DEFAULT '')",()).await?;
     c.execute(
         "INSERT INTO _rust_weather_state(id) VALUES(1) ON CONFLICT DO NOTHING",
         (),
     )
     .await?;
-    let mut next = scalar(
-        c,
-        "SELECT next_id FROM _rust_weather_state WHERE id=1",
-        vec![],
-    )
-    .await?;
+    c.execute("CREATE TABLE IF NOT EXISTS _rust_weather_sequences(table_name TEXT PRIMARY KEY,next_id INTEGER NOT NULL CHECK(next_id BETWEEN 1 AND 2147483648))",()).await?;
+    let mut daily_next = next_forecast_id(c, old, "weathers").await?;
+    let mut hourly_next = next_forecast_id(c, old, "hourly_weathers").await?;
     let mut shelters = Vec::new();
     let mut rows = c
         .query(
@@ -560,8 +597,8 @@ async fn update(c: &Connection, provider: &Arc<Provider>, owner: &str) -> Result
                 hourly.iter().map(move |row| (*id, row, created.as_str()))
             })
             .collect();
-        insert_forecasts(c, generation, "weathers", &daily, &mut next).await?;
-        insert_forecasts(c, generation, "hourly_weathers", &hourly, &mut next).await?;
+        insert_forecasts(c, generation, "weathers", &daily, &mut daily_next).await?;
+        insert_forecasts(c, generation, "hourly_weathers", &hourly, &mut hourly_next).await?;
         daily_count += daily.len();
         hourly_count += hourly.len();
         let previous = completed;
@@ -671,7 +708,10 @@ async fn update(c: &Connection, provider: &Arc<Provider>, owner: &str) -> Result
         (generation, snapshot, published.clone()),
     )
     .await?;
-    tx.execute("UPDATE _rust_weather_state SET owns_forecasts=1,generation=?,next_id=?,refreshed_utc=? WHERE id=1",(generation,next,published)).await?;
+    tx.execute("UPDATE _rust_weather_state SET owns_forecasts=1,generation=?,next_id=?,refreshed_utc=? WHERE id=1",(generation,daily_next.max(hourly_next),published)).await?;
+    for (table, next) in [("weathers", daily_next), ("hourly_weathers", hourly_next)] {
+        tx.execute("INSERT INTO _rust_weather_sequences(table_name,next_id) VALUES(?,?) ON CONFLICT(table_name) DO UPDATE SET next_id=excluded.next_id", (table, next)).await?;
+    }
     tx.execute(
         "INSERT INTO _migration_reports(generation,report) VALUES(?,?)",
         (generation, report.to_string()),
