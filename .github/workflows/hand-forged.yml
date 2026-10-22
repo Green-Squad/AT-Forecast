@@ -2,12 +2,14 @@ name: Hand-Forged validation
 on:
   push:
     branches: [hand-forged]
+  pull_request:
+    branches: [hand-forged]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   disposable-demo:
-    if: github.ref == 'refs/heads/hand-forged'
+    if: github.ref == 'refs/heads/hand-forged' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

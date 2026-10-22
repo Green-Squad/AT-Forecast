@@ -27,7 +27,7 @@ steps:
     grep -q '^  name: atforecast-hand-forged$' hand-forged/service.yaml
     sed -e 's|__APP_IMAGE__|us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/application:$COMMIT_SHA|' -e 's|__DB_IMAGE__|us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/database:$COMMIT_SHA|' hand-forged/service.yaml > /tmp/service.yaml
     gcloud run services replace /tmp/service.yaml --project=at-forecast --region=us-east4 --quiet
-    gcloud run services add-iam-policy-binding atforecast-hand-forged --project=at-forecast --region=us-east4 --member=allUsers --role=roles/run.invoker --quiet
+    python3 hand-forged/verify_private_service.py
 images:
 - us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/database:$COMMIT_SHA
 - us-east4-docker.pkg.dev/at-forecast/cloud-run-source-deploy/hand-forged/application:$COMMIT_SHA
