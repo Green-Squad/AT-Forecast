@@ -4,6 +4,7 @@ metadata:
   name: atforecast-hand-forged
   annotations:
     run.googleapis.com/ingress: all
+    run.googleapis.com/iap-enabled: 'true'
     run.googleapis.com/minScale: '0'
     run.googleapis.com/maxScale: '1'
 spec:
